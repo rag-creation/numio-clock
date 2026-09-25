@@ -1,0 +1,47 @@
+package com.rr.numio.clock.ui.theme
+
+import android.app.Activity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+
+@Composable
+fun ClockByNumioTheme(
+    content: @Composable () -> Unit
+) {
+    val accentColor = AppColor.accent.value
+
+    val colorScheme = darkColorScheme(
+        primary = accentColor,
+        onPrimary = NumioDark,
+        background = NumioDark,
+        onBackground = NumioTextPrimary,
+        surface = NumioSurface,
+        onSurface = NumioTextPrimary,
+        surfaceVariant = NumioSurface2,
+        onSurfaceVariant = NumioTextSecondary,
+        outline = NumioBorder,
+        error = NumioRed,
+        onError = NumioTextPrimary,
+    )
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = NumioDark.toArgb()
+            WindowCompat.getInsetsController(window, view)
+                .isAppearanceLightStatusBars = false
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
+}

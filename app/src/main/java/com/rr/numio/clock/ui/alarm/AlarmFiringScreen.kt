@@ -68,8 +68,11 @@ fun AlarmFiringScreen(
 
     LaunchedEffect(result) {
         if (result != AlarmResult.NONE) {
+            // Stop ringtone immediately
             AlarmReceiver.stopAlarm()
+            // Stop foreground service
             AlarmService.stop(context)
+            // Cancel all notifications
             val manager = context.getSystemService(
                 android.app.NotificationManager::class.java
             )
@@ -85,6 +88,9 @@ fun AlarmFiringScreen(
             secondsLeft--
         }
         if (result == AlarmResult.NONE) {
+            // Stop first, then snooze
+            AlarmReceiver.stopAlarm()
+            AlarmService.stop(context)
             AlarmScheduler.snooze(
                 context,
                 AlarmModel(
@@ -97,8 +103,6 @@ fun AlarmFiringScreen(
                 ),
                 snoozeMinutes
             )
-            AlarmReceiver.stopAlarm()
-            AlarmService.stop(context)
             result = AlarmResult.SNOOZED
             onSnooze()
         }
@@ -118,6 +122,8 @@ fun AlarmFiringScreen(
                 vibrator.vibrate(
                     VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE)
                 )
+                AlarmReceiver.stopAlarm()
+                AlarmService.stop(context)
                 AlarmScheduler.snooze(
                     context,
                     AlarmModel(

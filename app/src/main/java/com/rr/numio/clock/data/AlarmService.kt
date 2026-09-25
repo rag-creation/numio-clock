@@ -128,6 +128,9 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         AlarmReceiver.stopAlarm()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        val manager = getSystemService(android.app.NotificationManager::class.java)
+        manager.cancelAll()
         super.onDestroy()
     }
 

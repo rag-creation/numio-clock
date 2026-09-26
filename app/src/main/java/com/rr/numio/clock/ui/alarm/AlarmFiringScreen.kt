@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rr.numio.clock.AlarmActivity
 import com.rr.numio.clock.R
 import com.rr.numio.clock.data.AlarmModel
 import com.rr.numio.clock.data.AlarmReceiver
@@ -43,8 +45,13 @@ fun AlarmFiringScreen(
     onDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var result by remember { mutableStateOf(AlarmResult.NONE) }
-    var secondsLeft by remember { mutableStateOf(20) }
+
+    // Use MutableState directly so coroutines always read the live value
+    // rememberSaveable = survives activity recreation
+    val resultState = rememberSaveable { mutableStateOf(AlarmResult.NONE) }
+    var result by resultState
+
+    var secondsLeft by rememberSaveable { mutableStateOf(20) }
 
     var snoozeProgress by remember { mutableStateOf(0f) }
     var dismissProgress by remember { mutableStateOf(0f) }
@@ -54,7 +61,7 @@ fun AlarmFiringScreen(
     val snoozeDuration = 3000L
     val dismissDuration = 5000L
 
-    // FIX #1 — Live current time instead of alarm set time
+    // Live current time
     var currentTime by remember { mutableStateOf(Calendar.getInstance()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -66,13 +73,11 @@ fun AlarmFiringScreen(
     val m = currentTime.get(Calendar.MINUTE).toString().padStart(2, '0')
     val ap = if (currentTime.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
 
+    // Stop alarm + service as soon as result changes from NONE
     LaunchedEffect(result) {
         if (result != AlarmResult.NONE) {
-            // Stop ringtone immediately
             AlarmReceiver.stopAlarm()
-            // Stop foreground service
             AlarmService.stop(context)
-            // Cancel all notifications
             val manager = context.getSystemService(
                 android.app.NotificationManager::class.java
             )
@@ -80,17 +85,16 @@ fun AlarmFiringScreen(
         }
     }
 
-    // Auto-snooze after 20 seconds
+    // Countdown + auto-snooze after 20 seconds
     LaunchedEffect(Unit) {
-        for (i in 0 until 20) {
+        while (secondsLeft > 0) {
             delay(1000)
-            if (result != AlarmResult.NONE) return@LaunchedEffect
+            // Stop if this screen OR any other copy of it already handled the alarm
+            if (resultState.value != AlarmResult.NONE || AlarmActivity.handled) return@LaunchedEffect
             secondsLeft--
         }
-        if (result == AlarmResult.NONE) {
-            // Stop first, then snooze
-            AlarmReceiver.stopAlarm()
-            AlarmService.stop(context)
+        // Final check before firing auto-snooze
+        if (resultState.value == AlarmResult.NONE && !AlarmActivity.handled) {
             AlarmScheduler.snooze(
                 context,
                 AlarmModel(
@@ -103,7 +107,9 @@ fun AlarmFiringScreen(
                 ),
                 snoozeMinutes
             )
-            result = AlarmResult.SNOOZED
+            AlarmReceiver.stopAlarm()
+            AlarmService.stop(context)
+            resultState.value = AlarmResult.SNOOZED
             onSnooze()
         }
     }
@@ -136,7 +142,7 @@ fun AlarmFiringScreen(
                     ),
                     snoozeMinutes
                 )
-                result = AlarmResult.SNOOZED
+                resultState.value = AlarmResult.SNOOZED
                 onSnooze()
             }
         } else {
@@ -161,7 +167,9 @@ fun AlarmFiringScreen(
                 vibrator.vibrate(
                     VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE)
                 )
-                result = AlarmResult.DISMISSED
+                // Cancel any pending snooze scheduled by auto-snooze race condition
+                AlarmScheduler.cancelSnooze(context, alarmId)
+                resultState.value = AlarmResult.DISMISSED
                 onDismiss()
             }
         } else {

@@ -27,7 +27,7 @@ class AlarmService : Service() {
         val alarmStyle  = intent?.getStringExtra("alarm_style") ?: "hold"
         val snoozeMins  = intent?.getIntExtra("snooze_minutes", 10) ?: 10
 
-        val channelId = "numio_alarm_service"
+        val channelId = "numio_alarm_v2"
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         val alarmSound = android.media.RingtoneManager.getDefaultUri(

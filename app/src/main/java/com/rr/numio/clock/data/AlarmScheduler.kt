@@ -119,6 +119,23 @@ object AlarmScheduler {
         }
     }
 
+    // Cancels any pending snooze for this alarm — call this on dismiss
+    fun cancelSnooze(context: Context, alarmId: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = "com.rr.numio.clock.ALARM_TRIGGER"
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, alarmId + 9999, intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        pendingIntent?.let {
+            alarmManager.cancel(it)
+            it.cancel()
+            Log.d(TAG, "✅ Snooze cancelled for alarm $alarmId")
+        }
+    }
+
     fun cancel(context: Context, alarm: AlarmModel) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val days = listOf(
@@ -140,5 +157,8 @@ object AlarmScheduler {
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         )
         pendingIntent?.let { alarmManager.cancel(it) }
+
+        // Also cancel any pending snooze
+        cancelSnooze(context, alarm.id)
     }
 }

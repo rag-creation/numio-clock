@@ -17,31 +17,28 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.rr.numio.clock.data.WorldCityStore
 import com.rr.numio.clock.ui.alarm.AlarmFiringScreen
 import com.rr.numio.clock.ui.alarm.AlarmScreen
 import com.rr.numio.clock.ui.clock.ClockScreen
 import com.rr.numio.clock.ui.settings.SettingsScreen
 import com.rr.numio.clock.ui.stopwatch.StopwatchScreen
-import com.rr.numio.clock.ui.theme.AppColor
 import com.rr.numio.clock.ui.theme.ClockByNumioTheme
 import com.rr.numio.clock.ui.theme.NumioAmber
 import com.rr.numio.clock.ui.theme.NumioDark
 import com.rr.numio.clock.ui.theme.NumioTextMuted
 import com.rr.numio.clock.ui.timer.TimerScreen
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: Int) {
     object Clock     : Screen("clock",     "Clock",     R.drawable.ic_clock)
@@ -71,20 +68,6 @@ class MainActivity : ComponentActivity() {
 
         requestPermissions()
 
-        // Load saved accent color before UI starts
-        lifecycleScope.launch {
-            val savedColor = WorldCityStore.getAccentColor(this@MainActivity).firstOrNull()
-            if (savedColor != null) {
-                AppColor.update(Color(savedColor.toInt()))
-            }
-        }
-
-        // Show on lock screen
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-
         val navigateToFiring = intent?.getBooleanExtra("navigate_to_firing", false) == true
         val alarmHour   = intent?.getIntExtra("alarm_hour", 7) ?: 7
         val alarmMinute = intent?.getIntExtra("alarm_minute", 0) ?: 0
@@ -103,6 +86,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestPermissions() {
+        // Request notification permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -112,6 +96,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Request exact alarm permission (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
@@ -124,10 +109,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
         recreate()
     }
 }
@@ -180,8 +161,8 @@ fun MainScaffold(
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = AppColor.accent.value,
-                            selectedTextColor = AppColor.accent.value,
+                            selectedIconColor = NumioAmber,
+                            selectedTextColor = NumioAmber,
                             unselectedIconColor = NumioTextMuted,
                             unselectedTextColor = NumioTextMuted,
                             indicatorColor = Color.Transparent

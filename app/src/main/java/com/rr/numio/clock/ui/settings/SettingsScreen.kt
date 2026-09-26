@@ -23,9 +23,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.collectAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import android.widget.Toast
 import com.rr.numio.clock.data.WorldCityStore
 import com.rr.numio.clock.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.BreakIterator
 
 @Composable
 fun SettingsScreen() {
@@ -48,8 +57,10 @@ fun SettingsScreen() {
             else -> 1
         }
     }
+    // Easter egg: tap "Version 1.0.0" 7 times
     var easterEggCount by remember { mutableStateOf(0) }
     var showEasterEgg by remember { mutableStateOf(false) }
+    var lastToast by remember { mutableStateOf<Toast?>(null) }
     var hexInput by remember { mutableStateOf("") }
     var customColor by remember { mutableStateOf(AppColor.accent.value) }
 
@@ -342,7 +353,29 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(12.dp))
 
             SettingsCard {
-                SettingsRow(label = "Version", value = "1.0.0")
+                SettingsRow(
+                    label = "Version",
+                    value = "1.0.0",
+                    onSecretTap = {
+                        easterEggCount++
+                        val left = 7 - easterEggCount
+                        lastToast?.cancel()
+                        when {
+                            left <= 0 -> {
+                                easterEggCount = 0
+                                lastToast = null
+                                showEasterEgg = true
+                            }
+                            left <= 3 -> {
+                                lastToast = Toast.makeText(
+                                    context,
+                                    if (left == 1) "1 more tap…" else "$left more taps…",
+                                    Toast.LENGTH_SHORT
+                                ).also { it.show() }
+                            }
+                        }
+                    }
+                )
                 SettingsDivider()
                 SettingsRow(
                     label = "Source code",
@@ -363,25 +396,18 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        // Footer easter egg
+        // Footer
         item {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (showEasterEgg)
-                        "Time flies when you're\nbuilding cool stuff 💛"
-                    else
-                        "Thanks for choosing Numio Clock 💛",
+                    text = "Thanks for choosing Numio Clock 💛",
                     fontSize = 13.sp,
                     color = NumioTextMuted,
                     textAlign = TextAlign.Center,
-                    lineHeight = 20.sp,
-                    modifier = Modifier.clickable {
-                        easterEggCount++
-                        if (easterEggCount >= 7) showEasterEgg = true
-                    }
+                    lineHeight = 20.sp
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -391,6 +417,94 @@ fun SettingsScreen() {
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+
+    if (showEasterEgg) {
+        EasterEggOverlay(onClose = { showEasterEgg = false })
+    }
+}
+
+@Composable
+fun EasterEggOverlay(onClose: () -> Unit) {
+    val message = "Made from കേരളം 💛"
+    val signature = "With Lo❤️e, R.R"
+
+    // Split into real characters so emoji never show up half-drawn
+    val boundaries = remember(message) {
+        val iter = BreakIterator.getCharacterInstance()
+        iter.setText(message)
+        buildList {
+            var end = iter.next()
+            while (end != BreakIterator.DONE) {
+                add(end)
+                end = iter.next()
+            }
+        }
+    }
+
+    var shown by remember { mutableStateOf(0) }
+    var showSignature by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(400)
+        for (i in boundaries.indices) {
+            shown = boundaries[i]
+            delay(if (message[boundaries[i] - 1] == '\n') 300 else 60)
+        }
+        delay(600)
+        showSignature = true
+    }
+
+    val signatureAlpha by animateFloatAsState(
+        targetValue = if (showSignature) 1f else 0f,
+        animationSpec = tween(900),
+        label = "signature"
+    )
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xF20A0A0A))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onClose() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            ) {
+                Text(
+                    text = message.substring(0, shown),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.W300,
+                    color = AppColor.accent.value,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 34.sp
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                Text(
+                    text = signature,
+                    fontSize = 15.sp,
+                    color = NumioTextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(signatureAlpha)
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+                Text(
+                    text = "tap anywhere to close",
+                    fontSize = 11.sp,
+                    color = Color(0xFF333333),
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.alpha(signatureAlpha)
+                )
             }
         }
     }
@@ -423,12 +537,23 @@ fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 fun SettingsRow(
     label: String,
     value: String,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    // Tappable, but looks like a normal plain row (no accent color, no ripple)
+    onSecretTap: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .then(
+                when {
+                    onClick != null -> Modifier.clickable { onClick() }
+                    onSecretTap != null -> Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onSecretTap() }
+                    else -> Modifier
+                }
+            )
             .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

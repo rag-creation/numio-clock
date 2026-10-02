@@ -367,7 +367,7 @@ fun SettingsScreen() {
             SettingsCard {
                 SettingsRow(
                     label = "Version",
-                    value = "1.0.1",
+                    value = "1.1.0",
                     onSecretTap = {
                         easterEggCount++
                         val left = 7 - easterEggCount

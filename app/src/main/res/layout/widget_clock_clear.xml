@@ -17,6 +17,7 @@
         android:orientation="horizontal">
 
         <TextClock
+            android:id="@+id/widget_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-light"
@@ -29,6 +30,7 @@
             android:textSize="52sp" />
 
         <TextClock
+            android:id="@+id/widget_ampm"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
@@ -42,6 +44,7 @@
     </LinearLayout>
 
     <TextClock
+            android:id="@+id/widget_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:format12Hour="EEEE, d MMMM"

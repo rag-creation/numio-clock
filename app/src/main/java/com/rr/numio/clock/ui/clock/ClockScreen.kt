@@ -97,6 +97,41 @@ val cityPickerList = listOf(
     WorldCity("Pathanamthitta", "UTC +5:30",  5),
 )
 
+// Real time zones — handle half-hour offsets (India) and daylight saving automatically.
+// Matched by city name, so cities that are already saved keep working.
+private val cityZones = mapOf(
+    "New York" to "America/New_York",   "Los Angeles" to "America/Los_Angeles",
+    "Chicago" to "America/Chicago",     "Toronto" to "America/Toronto",
+    "São Paulo" to "America/Sao_Paulo", "London" to "Europe/London",
+    "Paris" to "Europe/Paris",          "Berlin" to "Europe/Berlin",
+    "Dubai" to "Asia/Dubai",            "Moscow" to "Europe/Moscow",
+    "Istanbul" to "Europe/Istanbul",    "Riyadh" to "Asia/Riyadh",
+    "Karachi" to "Asia/Karachi",        "Mumbai" to "Asia/Kolkata",
+    "Dhaka" to "Asia/Dhaka",            "Bangkok" to "Asia/Bangkok",
+    "Singapore" to "Asia/Singapore",    "Hong Kong" to "Asia/Hong_Kong",
+    "Beijing" to "Asia/Shanghai",       "Tokyo" to "Asia/Tokyo",
+    "Seoul" to "Asia/Seoul",            "Sydney" to "Australia/Sydney",
+    "Auckland" to "Pacific/Auckland",   "Johannesburg" to "Africa/Johannesburg",
+    "Cairo" to "Africa/Cairo",          "Nairobi" to "Africa/Nairobi",
+    "Kochi" to "Asia/Kolkata",          "Pathanamthitta" to "Asia/Kolkata",
+)
+
+fun cityTimeZone(city: WorldCity): java.util.TimeZone {
+    cityZones[city.name]?.let { return java.util.TimeZone.getTimeZone(it) }
+    // Fallback for any unknown city: use the stored whole-hour offset
+    val sign = if (city.utcOffset >= 0) "+" else "-"
+    return java.util.TimeZone.getTimeZone("GMT$sign${abs(city.utcOffset)}")
+}
+
+/** "UTC +5:30", "UTC −4" — calculated live, so it follows daylight saving. */
+fun utcOffsetLabel(tz: java.util.TimeZone, nowMs: Long): String {
+    val totalMin = tz.getOffset(nowMs) / 60000
+    val sign = if (totalMin >= 0) "+" else "−"
+    val h = abs(totalMin) / 60
+    val m = abs(totalMin) % 60
+    return if (m == 0) "UTC $sign$h" else "UTC $sign$h:${m.toString().padStart(2, '0')}"
+}
+
 @Composable
 fun ClockScreen(vm: ClockViewModel = viewModel()) {
     var time by remember { mutableStateOf(Calendar.getInstance()) }
@@ -182,12 +217,9 @@ fun ClockScreen(vm: ClockViewModel = viewModel()) {
                             }
                         }
                     }
-                    Text(
-                        "hold to change style",
-                        fontSize = 9.sp,
-                        color = NumioTextMuted.copy(alpha = 0.35f),
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(top = 6.dp)
+                    NumioHint(
+                        "Hold the clock to change style",
+                        modifier = Modifier.padding(top = 10.dp)
                     )
                 }
                 // picker renders as overlay outside LazyColumn — see below
@@ -489,7 +521,7 @@ fun ClockScreen(vm: ClockViewModel = viewModel()) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(city.name, fontSize = 14.sp, color = NumioTextPrimary)
-                            Text(city.offset, fontSize = 12.sp, color = NumioTextMuted)
+                            Text(utcOffsetLabel(cityTimeZone(city), System.currentTimeMillis()), fontSize = 12.sp, color = NumioTextMuted)
                         }
                         Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
                             drawRect(color = Color(0xFF1E1E1E))
@@ -510,10 +542,16 @@ fun WorldClockRow(
     onMoveUp: () -> Unit, onMoveDown: () -> Unit,
     onDragStart: () -> Unit, onDrag: (Float) -> Unit, onDragEnd: () -> Unit,
 ) {
-    var time by remember { mutableStateOf(Calendar.getInstance()) }
-    LaunchedEffect(Unit) { while (true) { time = Calendar.getInstance(); delay(60000) } }
-    val utc = time.timeInMillis - time.timeZone.getOffset(time.timeInMillis)
-    val there = Calendar.getInstance().apply { timeInMillis = utc + city.utcOffset * 3600000L }
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            nowMs = System.currentTimeMillis()
+            // Wake up right when the next minute starts, so it never lags behind the phone
+            delay(60_000 - nowMs % 60_000 + 50)
+        }
+    }
+    val tz = remember(city.name) { cityTimeZone(city) }
+    val there = Calendar.getInstance(tz).apply { timeInMillis = nowMs }
     val h = there.get(Calendar.HOUR).let { if (it == 0) 12 else it }
     val m = there.get(Calendar.MINUTE).toString().padStart(2, '0')
     val ap = if (there.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
@@ -543,7 +581,7 @@ fun WorldClockRow(
         ) {
             Column {
                 Text(city.name, fontSize = 13.sp, color = NumioTextPrimary)
-                Text(city.offset, fontSize = 10.sp, color = NumioTextSecondary)
+                Text(utcOffsetLabel(tz, nowMs), fontSize = 10.sp, color = NumioTextSecondary)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (isMenuOpen) {

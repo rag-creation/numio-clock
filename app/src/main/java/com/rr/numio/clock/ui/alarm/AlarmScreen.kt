@@ -115,16 +115,12 @@ fun AlarmScreen() {
                 // Hint — shown until the user has deleted an alarm once
                 if (alarms.isNotEmpty() && !hintSeen) {
                     item {
-                        Text(
-                            text = "Hold an alarm to delete it",
-                            fontSize = 11.sp,
-                            color = Color(0xFF444444),
-                            letterSpacing = 0.5.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 2.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NumioHint("Hold an alarm to delete it")
+                        }
                     }
                 }
 

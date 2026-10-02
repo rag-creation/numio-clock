@@ -7,6 +7,8 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.util.TypedValue
 import android.widget.RemoteViews
 import com.rr.numio.clock.MainActivity
 import com.rr.numio.clock.R
@@ -15,14 +17,22 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * Home screen widget: time + date + next alarm.
+ * Home screen widgets: time + date + next alarm.
+ * ClockWidget       → dark card
+ * ClockWidgetClear  → transparent, just the clock
  * The time and date are TextClocks, so they tick by themselves — no background work.
- * The next-alarm line refreshes whenever Android says the next alarm changed.
  */
-class ClockWidget : AppWidgetProvider() {
+open class ClockWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        ids.forEach { update(context, manager, it) }
+        updateAll(context)
+    }
+
+    // Called when the user resizes the widget
+    override fun onAppWidgetOptionsChanged(
+        context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle
+    ) {
+        updateAll(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,15 +46,37 @@ class ClockWidget : AppWidgetProvider() {
     }
 
     companion object {
+        /** Refresh every placed widget of both styles. */
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, ClockWidget::class.java))
-            ids.forEach { update(context, manager, it) }
+            val variants = listOf(
+                ClockWidget::class.java to R.layout.widget_clock,
+                ClockWidgetClear::class.java to R.layout.widget_clock_clear
+            )
+            for ((cls, layout) in variants) {
+                manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
+                    val options = manager.getAppWidgetOptions(id)
+                    manager.updateAppWidget(id, buildViews(context, layout, options))
+                }
+            }
         }
 
-        private fun update(context: Context, manager: AppWidgetManager, id: Int) {
-            val views = RemoteViews(context.packageName, R.layout.widget_clock)
+        private fun buildViews(context: Context, layout: Int, options: Bundle): RemoteViews {
+            val views = RemoteViews(context.packageName, layout)
             views.setTextViewText(R.id.widget_next_alarm, nextAlarmText(context))
+
+            // Scale the text to the widget's size.
+            // Base design = 250 × 110 dp. Portrait width = MIN_WIDTH, portrait height = MAX_HEIGHT.
+            val w = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250).takeIf { it > 0 } ?: 250
+            val h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 110).takeIf { it > 0 } ?: 110
+            val scale = minOf(w / 250f, h / 110f).coerceIn(0.7f, 2.4f)
+
+            fun size(id: Int, sp: Float) =
+                views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp * scale)
+            size(R.id.widget_time, 52f)
+            size(R.id.widget_ampm, 16f)
+            size(R.id.widget_date, 13f)
+            size(R.id.widget_next_alarm, 12f)
 
             // Tap the widget to open the app
             val open = PendingIntent.getActivity(
@@ -53,8 +85,7 @@ class ClockWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_root, open)
-
-            manager.updateAppWidget(id, views)
+            return views
         }
 
         private fun nextAlarmText(context: Context): String {
@@ -79,3 +110,6 @@ class ClockWidget : AppWidgetProvider() {
         }
     }
 }
+
+/** Transparent variant — same behaviour, no background card. */
+class ClockWidgetClear : ClockWidget()

@@ -1,14 +1,10 @@
 package com.rr.numio.clock
 
-import android.app.AlarmManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -20,6 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -33,6 +32,8 @@ import com.rr.numio.clock.ui.alarm.AlarmFiringScreen
 import com.rr.numio.clock.ui.alarm.AlarmScreen
 import com.rr.numio.clock.ui.clock.ClockScreen
 import com.rr.numio.clock.ui.settings.SettingsScreen
+import com.rr.numio.clock.ui.setup.NumioPermissions
+import com.rr.numio.clock.ui.setup.PermissionSetupScreen
 import com.rr.numio.clock.ui.stopwatch.StopwatchScreen
 import com.rr.numio.clock.ui.theme.ClockByNumioTheme
 import com.rr.numio.clock.ui.theme.NumioAmber
@@ -58,50 +59,32 @@ val bottomNavItems = listOf(
 
 class MainActivity : ComponentActivity() {
 
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* permission result handled */ }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        requestPermissions()
 
         val navigateToFiring = intent?.getBooleanExtra("navigate_to_firing", false) == true
         val alarmHour   = intent?.getIntExtra("alarm_hour", 7) ?: 7
         val alarmMinute = intent?.getIntExtra("alarm_minute", 0) ?: 0
         val alarmLabel  = intent?.getStringExtra("alarm_label") ?: "Alarm"
 
+        // Show the setup screen if a required permission is missing
+        // (first launch, after a reinstall, or if the user turned one off)
+        val needsSetup = !navigateToFiring && !NumioPermissions.allRequired(this)
+
         setContent {
             ClockByNumioTheme {
-                MainScaffold(
-                    navigateToFiring = navigateToFiring,
-                    alarmHour = alarmHour,
-                    alarmMinute = alarmMinute,
-                    alarmLabel = alarmLabel
-                )
-            }
-        }
-    }
-
-    private fun requestPermissions() {
-        // Request notification permission (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
-                android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                notificationPermissionLauncher.launch(
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                )
-            }
-        }
-
-        // Request exact alarm permission (Android 12+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(AlarmManager::class.java)
-            if (!alarmManager.canScheduleExactAlarms()) {
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                startActivity(intent)
+                var showSetup by rememberSaveable { mutableStateOf(needsSetup) }
+                if (showSetup) {
+                    PermissionSetupScreen(onDone = { showSetup = false })
+                } else {
+                    MainScaffold(
+                        navigateToFiring = navigateToFiring,
+                        alarmHour = alarmHour,
+                        alarmMinute = alarmMinute,
+                        alarmLabel = alarmLabel
+                    )
+                }
             }
         }
     }

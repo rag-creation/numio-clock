@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import android.widget.Toast
 import com.rr.numio.clock.data.WorldCityStore
+import com.rr.numio.clock.ui.setup.PermissionList
 import com.rr.numio.clock.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -346,6 +347,17 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(10.dp))
         }
 
+        // Permissions
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingsSectionTitle("Permissions")
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingsCard {
+                PermissionList()
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
         // About
         item {
             Spacer(modifier = Modifier.height(8.dp))
@@ -355,7 +367,7 @@ fun SettingsScreen() {
             SettingsCard {
                 SettingsRow(
                     label = "Version",
-                    value = "1.0.0",
+                    value = "1.0.1",
                     onSecretTap = {
                         easterEggCount++
                         val left = 7 - easterEggCount

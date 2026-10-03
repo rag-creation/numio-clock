@@ -1,5 +1,6 @@
 package com.rr.numio.clock
 
+import com.rr.numio.clock.data.AlarmModel
 import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
@@ -72,7 +73,22 @@ class AlarmActivity : ComponentActivity() {
                         minute = minute,
                         label = label,
                         snoozeMinutes = snoozeMins,
-                        onSnooze = { onSnoozed() },
+                        onSnooze = {
+                            // Chase the Moon doesn't schedule the snooze itself — do it here
+                            AlarmScheduler.snooze(
+                                this@AlarmActivity,
+                                AlarmModel(
+                                    id = alarmId,
+                                    hour = hour,
+                                    minute = minute,
+                                    label = label,
+                                    days = List(7) { false },
+                                    isEnabled = true
+                                ),
+                                snoozeMins
+                            )
+                            onSnoozed()
+                        },
                         onDismiss = { onDismissed(alarmId) }
                     )
                 } else {

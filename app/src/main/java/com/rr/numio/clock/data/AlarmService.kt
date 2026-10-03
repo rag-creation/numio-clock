@@ -80,7 +80,7 @@ class AlarmService : Service() {
 
         // Gradually ramp up volume over 30 seconds
         CoroutineScope(Dispatchers.IO).launch {
-            val steps = 30
+            val steps = 15
             for (i in 1..steps) {
                 delay(1000)
                 val vol = ((i.toFloat() / steps) * maxVolume).toInt().coerceAtMost(maxVolume)

@@ -51,7 +51,7 @@ fun AlarmFiringScreen(
     val resultState = rememberSaveable { mutableStateOf(AlarmResult.NONE) }
     var result by resultState
 
-    var secondsLeft by rememberSaveable { mutableStateOf(20) }
+    var secondsLeft by rememberSaveable { mutableStateOf(60) }
 
     var snoozeProgress by remember { mutableStateOf(0f) }
     var dismissProgress by remember { mutableStateOf(0f) }

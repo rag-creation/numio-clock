@@ -32,6 +32,7 @@ import androidx.compose.ui.window.DialogProperties
 import android.widget.Toast
 import com.rr.numio.clock.data.WorldCityStore
 import com.rr.numio.clock.ui.setup.PermissionList
+import com.rr.numio.clock.widget.PosterStyles
 import com.rr.numio.clock.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -172,6 +173,7 @@ fun SettingsScreen() {
                                 )
                                 customColor = parsed
                                 AppColor.update(parsed)
+                                PosterStyles.saveAccent(context, parsed.toArgb())
                                 // Save to DataStore so it persists after restart
                                 scope.launch {
                                     WorldCityStore.saveAccentColor(
@@ -202,6 +204,7 @@ fun SettingsScreen() {
                         .clickable {
                             hexInput = ""
                             AppColor.update(NumioAmber)
+                            PosterStyles.saveAccent(context, NumioAmber.toArgb())
                             scope.launch {
                                 WorldCityStore.saveAccentColor(
                                     context,
@@ -353,6 +356,10 @@ fun SettingsScreen() {
             SettingsSectionTitle("Widget")
             Spacer(modifier = Modifier.height(12.dp))
             SettingsCard {
+                PosterStylePicker()
+                Spacer(modifier = Modifier.height(20.dp))
+                SettingsDivider()
+                Spacer(modifier = Modifier.height(16.dp))
                 WidgetFontPicker()
             }
             Spacer(modifier = Modifier.height(10.dp))

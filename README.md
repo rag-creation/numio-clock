@@ -19,7 +19,11 @@ A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Comp
 - ✅ First-launch setup that explains every permission
 - ✅ Hand-drawn custom app icon
 - ✅ A little easter egg 🤫
-- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅eleases/latest).
+- ✅ 100% offline — nothing ever leaves your device
+
+## Download
+
+Get the latest APK from [Releases](https://github.com/rag-creation/numio-clock/releases/latest).
 
 F-Droid version coming soon.
 

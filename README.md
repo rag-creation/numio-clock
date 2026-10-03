@@ -4,20 +4,22 @@ A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Comp
 
 ## Features
 
-- ✅ Analog + digital clock
-- ✅ World clocks — add, remove and reorder cities (supports half-hour zones like India)
+- ✅ Analog + digital clock with three dial styles
+- ✅ World clocks — add, remove and reorder cities (correct half-hour zones and daylight saving)
 - ✅ Alarms with repeat days, gentle volume fade-in and lock screen support
 - ✅ Two alarm styles — **Hold to Unlock** and **Chase the Moon** (hard mode 🌙)
 - ✅ Snooze duration — 5 / 10 / 15 / 20 minutes
+- ✅ Safer delete — hold an alarm to delete, with confirm and Undo
 - ✅ Timer and stopwatch
+- ✅ **Home screen widgets**
+  - Card and Clear widgets with 6 font styles, resizable
+  - **Poster widget** in three hand-lettered styles: Marker, Script and Bold
+  - Widgets follow your accent colour
 - ✅ Theme customization — preset accent colors + custom hex input
+- ✅ First-launch setup that explains every permission
 - ✅ Hand-drawn custom app icon
 - ✅ A little easter egg 🤫
-- ✅ 100% offline — nothing ever leaves your device
-
-## Download
-
-Get the latest APK from [Releases](https://github.com/rag-creation/numio-clock/releases/latest).
+- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅ 100% o- ✅eleases/latest).
 
 F-Droid version coming soon.
 
@@ -31,7 +33,15 @@ F-Droid version coming soon.
 - [Jetpack Compose](https://developer.android.com/jetpack/compose)
 - [DataStore](https://developer.android.com/jetpack/androidx/releases/datastore)
 - [Navigation Compose](https://developer.android.com/jetpack/compose/navigation)
-- [Glance](https://developer.android.com/jetpack/compose/glance)
+
+## Fonts
+
+The poster widget uses these fonts, bundled in the app (no internet, no tracking).
+Licenses are in the [licenses](licenses/) folder:
+
+- [Permanent Marker](https://fonts.google.com/specimen/Permanent+Marker) by Font Diner (Apache License 2.0)
+- [Bangers](https://fonts.google.com/specimen/Bangers) by Vernon Adams (SIL OFL 1.1)
+- [Dancing Script](https://fonts.google.com/specimen/Dancing+Script) by Pablo Impallari (SIL OFL 1.1)
 
 ## License
 

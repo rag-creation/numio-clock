@@ -43,15 +43,23 @@ open class ClockWidget : AppWidgetProvider() {
             Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_DATE_CHANGED -> updateAll(context)
         }
+        if (isPosterTick(intent)) updateAll(context)
+    }
+
+    // Last widget of this type removed — stop the poster tick if no posters are left
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        schedulePosterTick(context)
     }
 
     companion object {
         /** Refresh every placed widget of both styles. */
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
+            val (cardLayout, clearLayout) = WidgetFonts.layouts(WidgetFonts.current(context))
             val variants = listOf(
-                ClockWidget::class.java to R.layout.widget_clock,
-                ClockWidgetClear::class.java to R.layout.widget_clock_clear
+                ClockWidget::class.java to cardLayout,
+                ClockWidgetClear::class.java to clearLayout
             )
             for ((cls, layout) in variants) {
                 manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
@@ -59,7 +67,68 @@ open class ClockWidget : AppWidgetProvider() {
                     manager.updateAppWidget(id, buildViews(context, layout, options))
                 }
             }
+            // Poster widget has its own layout and fonts
+            manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).forEach { id ->
+                manager.updateAppWidget(id, buildPosterViews(context, manager.getAppWidgetOptions(id)))
+            }
+            schedulePosterTick(context)
         }
+
+        private fun buildPosterViews(context: Context, options: Bundle): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_poster)
+
+            // Widget size in pixels (portrait: MIN_WIDTH × MAX_HEIGHT)
+            val density = context.resources.displayMetrics.density
+            val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 260).takeIf { it > 0 } ?: 260
+            val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 140).takeIf { it > 0 } ?: 140
+            // Cap the size so the bitmap stays small in memory
+            val scaleDown = minOf(1f, 1100f / (wDp * density), 700f / (hDp * density))
+            val wPx = (wDp * density * scaleDown).toInt()
+            val hPx = (hDp * density * scaleDown).toInt()
+
+            views.setImageViewBitmap(R.id.poster_image, PosterRenderer.render(context, wPx, hPx))
+            views.setContentDescription(R.id.poster_image, PosterRenderer.description(context))
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+            return views
+        }
+
+        // ── Poster minute tick ───────────────────────────────────────────────
+        // The poster is a picture, so it needs a redraw every minute.
+        // RTC (not RTC_WAKEUP): never wakes the phone; if the screen is off,
+        // Android delivers it when the phone next wakes. Almost no battery.
+        private const val ACTION_POSTER_TICK = "com.rr.numio.clock.POSTER_TICK"
+
+        private fun tickIntent(context: Context): PendingIntent =
+            PendingIntent.getBroadcast(
+                context, 4242,
+                Intent(context, ClockWidgetPoster::class.java).setAction(ACTION_POSTER_TICK),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+        fun schedulePosterTick(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty()
+            val alarmManager = context.getSystemService(AlarmManager::class.java)
+            if (!hasPoster) {
+                alarmManager.cancel(tickIntent(context))
+                return
+            }
+            val nextMinute = (System.currentTimeMillis() / 60_000 + 1) * 60_000
+            try {
+                alarmManager.setExact(AlarmManager.RTC, nextMinute, tickIntent(context))
+            } catch (e: SecurityException) {
+                alarmManager.set(AlarmManager.RTC, nextMinute, tickIntent(context))
+            }
+        }
+
+        internal fun isPosterTick(intent: Intent) = intent.action == ACTION_POSTER_TICK
+
+        private fun openAppIntent(context: Context): PendingIntent =
+            PendingIntent.getActivity(
+                context, 0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
 
         private fun buildViews(context: Context, layout: Int, options: Bundle): RemoteViews {
             val views = RemoteViews(context.packageName, layout)
@@ -79,12 +148,7 @@ open class ClockWidget : AppWidgetProvider() {
             size(R.id.widget_next_alarm, 12f)
 
             // Tap the widget to open the app
-            val open = PendingIntent.getActivity(
-                context, 0,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(R.id.widget_root, open)
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
             return views
         }
 
@@ -113,3 +177,58 @@ open class ClockWidget : AppWidgetProvider() {
 
 /** Transparent variant — same behaviour, no background card. */
 class ClockWidgetClear : ClockWidget()
+
+/** Poster variant — hand-lettered collage style. */
+class ClockWidgetPoster : ClockWidget()
+
+/**
+ * Widget fonts. Widgets can't change fonts from code, so each font has its own
+ * layout file (generated from widget_clock.xml / widget_clock_clear.xml).
+ */
+object WidgetFonts {
+    const val PREFS = "numio_prefs"
+    const val KEY = "widget_font"
+
+    /** key to label shown in Settings */
+    val options = listOf(
+        "light" to "Light",
+        "thin" to "Thin",
+        "bold" to "Bold",
+        "condensed" to "Condensed",
+        "mono" to "Mono",
+        "serif" to "Serif"
+        // "script" (Dancing Script) is hidden: launchers can't load bundled fonts in
+        // text widgets. It can come back once the card widget is drawn as an image too.
+    )
+
+    /** Android system font family name for each key ("script" is bundled, see previewFamily) */
+    fun family(key: String): String = when (key) {
+        "thin" -> "sans-serif-thin"
+        "bold" -> "sans-serif-black"
+        "condensed" -> "sans-serif-condensed-light"
+        "mono" -> "monospace"
+        "serif" -> "serif"
+        else -> "sans-serif-light"
+    }
+
+    fun current(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY, "light") ?: "light"
+
+    fun save(context: Context, key: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY, key).apply()
+        ClockWidget.updateAll(context)
+    }
+
+    /** (card layout, clear layout) for a font key */
+    fun layouts(key: String): Pair<Int, Int> = when (key) {
+        "thin" -> R.layout.widget_clock_thin to R.layout.widget_clock_clear_thin
+        "bold" -> R.layout.widget_clock_bold to R.layout.widget_clock_clear_bold
+        "condensed" -> R.layout.widget_clock_condensed to R.layout.widget_clock_clear_condensed
+        "mono" -> R.layout.widget_clock_mono to R.layout.widget_clock_clear_mono
+        "serif" -> R.layout.widget_clock_serif to R.layout.widget_clock_clear_serif
+        "script" -> R.layout.widget_clock_script to R.layout.widget_clock_clear_script
+        else -> R.layout.widget_clock to R.layout.widget_clock_clear
+    }
+}

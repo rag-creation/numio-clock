@@ -74,6 +74,19 @@
                 android:resource="@xml/widget_clock_clear_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.ClockWidgetPoster"
+            android:exported="false"
+            android:label="Clock by Numio · Poster">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_poster_info" />
+        </receiver>
+
         <service
             android:name=".data.AlarmService"
             android:exported="false"

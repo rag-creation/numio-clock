@@ -58,7 +58,7 @@ fun SettingsScreen() {
             else -> 1
         }
     }
-    // Easter egg: tap "Version 1.0.0" 7 times
+    // Easter egg: tap the Version row 7 times
     var easterEggCount by remember { mutableStateOf(0) }
     var showEasterEgg by remember { mutableStateOf(false) }
     var lastToast by remember { mutableStateOf<Toast?>(null) }
@@ -347,6 +347,17 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(10.dp))
         }
 
+        // Widget
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingsSectionTitle("Widget")
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingsCard {
+                WidgetFontPicker()
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
         // Permissions
         item {
             Spacer(modifier = Modifier.height(8.dp))
@@ -367,7 +378,7 @@ fun SettingsScreen() {
             SettingsCard {
                 SettingsRow(
                     label = "Version",
-                    value = "1.1.1",
+                    value = "1.2.0",
                     onSecretTap = {
                         easterEggCount++
                         val left = 7 - easterEggCount

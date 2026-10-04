@@ -13,7 +13,8 @@ A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Comp
 - ✅ Timer and stopwatch
 - ✅ **Home screen widgets**
   - Card and Clear widgets with 6 font styles, resizable
-  - **Poster widget** in three hand-lettered styles: Marker, Script and Bold
+  - **Poster widget** in six styles: Marker, Script, Bold, Sketch, Sketch Clear and Bubble
+  - Sketch styles use hand-drawn letters and digits by RR
   - Widgets follow your accent colour
 - ✅ Theme customization — preset accent colors + custom hex input
 - ✅ First-launch setup that explains every permission
@@ -46,6 +47,7 @@ Licenses are in the [licenses](licenses/) folder:
 - [Permanent Marker](https://fonts.google.com/specimen/Permanent+Marker) by Font Diner (Apache License 2.0)
 - [Bangers](https://fonts.google.com/specimen/Bangers) by Vernon Adams (SIL OFL 1.1)
 - [Dancing Script](https://fonts.google.com/specimen/Dancing+Script) by Pablo Impallari (SIL OFL 1.1)
+- [Baloo 2](https://fonts.google.com/specimen/Baloo+2) by Ek Type (SIL OFL 1.1), ExtraBold, Latin subset
 
 ## License
 

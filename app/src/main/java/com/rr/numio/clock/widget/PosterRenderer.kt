@@ -26,7 +26,9 @@ object PosterStyles {
         "script" to "Script",
         "bold" to "Bold",
         "sketch" to "Sketch",
-        "sketch_clear" to "Sketch Clear"
+        "sketch_clear" to "Sketch Clear",
+        "bubble" to "Bubble",
+        "bubble_clear" to "Bubble Clear"
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -79,6 +81,13 @@ object PosterRenderer {
                 day = fmtEn("EEEE").uppercase(Locale.ENGLISH),
                 date = fmtEn("MMMM dd").uppercase(Locale.ENGLISH),
                 boxed = style == "sketch"
+            )
+            "bubble", "bubble_clear" -> BubbleRenderer.draw(
+                context, canvas, w, h, accent,
+                time = fmtEn(if (is24(context)) "HH:mm" else "hh:mm"),
+                date = fmtEn("EEEE").uppercase(Locale.ENGLISH) + " · " +
+                    fmtEn("d MMMM").uppercase(Locale.ENGLISH),
+                boxed = style == "bubble"
             )
             else -> drawMarker(context, canvas, w, h, accent)
         }

@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rr.numio.clock.R
@@ -26,6 +27,7 @@ import com.rr.numio.clock.widget.PosterStyles
 private fun styleFont(key: String) = when (key) {
     "script" -> FontFamily(Font(R.font.dancing_script))
     "bold" -> FontFamily(Font(R.font.bangers))
+    "bubble", "bubble_clear" -> FontFamily(Font(R.font.baloo2_extrabold))
     else -> FontFamily(Font(R.font.permanent_marker))
 }
 
@@ -61,34 +63,44 @@ fun PosterStylePicker() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PosterStyles.options.forEach { (key, label) ->
-                val isSelected = key == selected
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) accent.copy(alpha = 0.12f) else Color(0xFF1F1F1F))
-                        .then(
-                            if (isSelected) Modifier.border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                            else Modifier
-                        )
-                        .clickable {
-                            selected = key
-                            PosterStyles.save(context, key) // updates widgets immediately
-                        }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
+        // 3 per row, so longer names like "Sketch Clear" have room
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PosterStyles.options.chunked(3).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        label,
-                        fontSize = 15.sp,
-                        fontFamily = styleFont(key),
-                        color = if (isSelected) accent else NumioTextSecondary
-                    )
+                    row.forEach { (key, label) ->
+                        val isSelected = key == selected
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) accent.copy(alpha = 0.12f) else Color(0xFF1F1F1F))
+                                .then(
+                                    if (isSelected) Modifier.border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                    else Modifier
+                                )
+                                .clickable {
+                                    selected = key
+                                    PosterStyles.save(context, key) // updates widgets immediately
+                                }
+                                .padding(horizontal = 6.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                label,
+                                fontSize = 15.sp,
+                                fontFamily = styleFont(key),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 17.sp,
+                                color = if (isSelected) accent else NumioTextSecondary
+                            )
+                        }
+                    }
+                    // keep the last row's buttons the same width
+                    repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                 }
             }
         }

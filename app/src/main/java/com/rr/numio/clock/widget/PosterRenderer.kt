@@ -24,7 +24,9 @@ object PosterStyles {
     val options = listOf(
         "marker" to "Marker",
         "script" to "Script",
-        "bold" to "Bold"
+        "bold" to "Bold",
+        "sketch" to "Sketch",
+        "sketch_clear" to "Sketch Clear"
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -70,6 +72,14 @@ object PosterRenderer {
         when (style) {
             "script" -> drawScript(context, canvas, w, h, accent)
             "bold" -> drawBold(context, canvas, w, h, accent)
+            "sketch", "sketch_clear" -> SketchRenderer.draw(
+                context, canvas, w, h, accent,
+                // English + Latin digits: the sketch glyphs only cover A-Z and 0-9
+                time = fmtEn(if (is24(context)) "HH:mm" else "hh:mm"),
+                day = fmtEn("EEEE").uppercase(Locale.ENGLISH),
+                date = fmtEn("MMMM dd").uppercase(Locale.ENGLISH),
+                boxed = style == "sketch"
+            )
             else -> drawMarker(context, canvas, w, h, accent)
         }
         return bmp
@@ -89,6 +99,9 @@ object PosterRenderer {
 
     private fun fmt(pattern: String) =
         SimpleDateFormat(pattern, Locale.getDefault()).format(Calendar.getInstance().time)
+
+    private fun fmtEn(pattern: String) =
+        SimpleDateFormat(pattern, Locale.ENGLISH).format(Calendar.getInstance().time)
 
     private fun is24(context: Context) = DateFormat.is24HourFormat(context)
 

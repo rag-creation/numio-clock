@@ -23,17 +23,23 @@ object PosterStyles {
     /** key to label shown in Settings */
     val options = listOf(
         "marker" to "Marker",
-        "script" to "Script",
         "bold" to "Bold",
         "sketch" to "Sketch",
         "sketch_clear" to "Sketch Clear",
         "bubble" to "Bubble",
-        "bubble_clear" to "Bubble Clear"
+        "bubble_clear" to "Bubble Clear",
+        "sadhya" to "Sadhya",
+        "bloom" to "Bloom",
+        "bloom_clear" to "Bloom Clear"
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun current(context: Context): String = prefs(context).getString(KEY_STYLE, "marker") ?: "marker"
+    /** Saved style; anything no longer offered (e.g. the old "script") falls back to Marker. */
+    fun current(context: Context): String {
+        val saved = prefs(context).getString(KEY_STYLE, "marker") ?: "marker"
+        return if (options.any { it.first == saved }) saved else "marker"
+    }
 
     fun save(context: Context, key: String) {
         prefs(context).edit().putString(KEY_STYLE, key).apply()
@@ -72,7 +78,6 @@ object PosterRenderer {
         val canvas = Canvas(bmp)
         val accent = PosterStyles.accent(context)
         when (style) {
-            "script" -> drawScript(context, canvas, w, h, accent)
             "bold" -> drawBold(context, canvas, w, h, accent)
             "sketch", "sketch_clear" -> SketchRenderer.draw(
                 context, canvas, w, h, accent,
@@ -88,6 +93,19 @@ object PosterRenderer {
                 date = fmtEn("EEEE").uppercase(Locale.ENGLISH) + " · " +
                     fmtEn("d MMMM").uppercase(Locale.ENGLISH),
                 boxed = style == "bubble"
+            )
+            "sadhya" -> SadhyaRenderer.draw(
+                context, canvas, w, h,
+                time = fmtEn(if (is24(context)) "HH:mm" else "hh:mm"),
+                date = fmtEn("EEEE").uppercase(Locale.ENGLISH) + " · " +
+                    fmtEn("d MMMM").uppercase(Locale.ENGLISH)
+            )
+            "bloom", "bloom_clear" -> BloomRenderer.draw(
+                context, canvas, w, h, accent,
+                time = fmtEn(if (is24(context)) "HH:mm" else "hh:mm"),
+                date = fmtEn("EEEE").uppercase(Locale.ENGLISH) + " · " +
+                    fmtEn("d MMMM").uppercase(Locale.ENGLISH),
+                boxed = style == "bloom"
             )
             else -> drawMarker(context, canvas, w, h, accent)
         }
@@ -170,41 +188,6 @@ object PosterRenderer {
         val dotsY = midY + digit * 0.62f
         for (i in 0 until 3) canvas.drawCircle(rx + dotR + i * dotR * 3.2f, dotsY - dotR, dotR, solid)
         canvas.drawText("NUMIO", rx + dotR * 10.5f, dotsY, brandPaint)
-    }
-
-    // ── 2. SCRIPT: elegant handwritten time, date underneath ────────────────
-    private fun drawScript(context: Context, canvas: Canvas, w: Int, h: Int, accent: Int) {
-        val scriptFont = font(context, R.font.dancing_script)
-        val time = fmt(if (is24(context)) "HH:mm" else "h:mm")
-        val ampm = if (is24(context)) "" else fmt("a").lowercase()
-        val date = fmt("EEEE, d MMMM")
-
-        var size = h * 0.56f
-        val pad = h * 0.08f
-
-        fun neededWidth(s: Float): Float {
-            val timeW = paint(scriptFont, accent, s).measureText(time)
-            val ampmW = if (ampm.isEmpty()) 0f else paint(scriptFont, accent, s * 0.30f).measureText(ampm) + s * 0.10f
-            val dateW = paint(scriptFont, WHITE, s * 0.28f).measureText(date)
-            return maxOf(timeW + ampmW, dateW)
-        }
-        val needed = neededWidth(size)
-        if (needed > w - pad * 2) size *= (w - pad * 2) / needed
-
-        val timePaint = paint(scriptFont, accent, size)
-        val ampmPaint = paint(scriptFont, (accent and 0x00FFFFFF) or (0xB3 shl 24), size * 0.30f)
-        val datePaint = paint(scriptFont, WHITE, size * 0.28f)
-
-        val blockH = size * 1.25f
-        val top = (h - blockH) / 2f
-        val x = pad
-        val timeBaseline = top + size * 0.82f
-
-        canvas.drawText(time, x, timeBaseline, timePaint)
-        if (ampm.isNotEmpty()) {
-            canvas.drawText(ampm, x + timePaint.measureText(time) + size * 0.10f, timeBaseline, ampmPaint)
-        }
-        canvas.drawText(date, x + size * 0.04f, timeBaseline + size * 0.42f, datePaint)
     }
 
     // ── 3. BOLD: huge comic time, date in an accent pill ─────────────────────

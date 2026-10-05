@@ -33,6 +33,8 @@ import android.widget.Toast
 import com.rr.numio.clock.data.WorldCityStore
 import com.rr.numio.clock.ui.setup.PermissionList
 import com.rr.numio.clock.widget.PosterStyles
+import com.rr.numio.clock.widget.WidgetFonts
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.rr.numio.clock.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,6 +42,13 @@ import java.text.BreakIterator
 
 @Composable
 fun SettingsScreen() {
+    // Widget choices live on their own page
+    var showWidgets by rememberSaveable { mutableStateOf(false) }
+    if (showWidgets) {
+        WidgetsScreen(onBack = { showWidgets = false })
+        return
+    }
+
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -356,11 +365,22 @@ fun SettingsScreen() {
             SettingsSectionTitle("Widget")
             Spacer(modifier = Modifier.height(12.dp))
             SettingsCard {
-                PosterStylePicker()
-                Spacer(modifier = Modifier.height(20.dp))
-                SettingsDivider()
-                Spacer(modifier = Modifier.height(16.dp))
-                WidgetFontPicker()
+                val posterLabel = PosterStyles.options.firstOrNull { it.first == PosterStyles.current(context) }?.second ?: ""
+                val fontLabel = WidgetFonts.options.firstOrNull { it.first == WidgetFonts.current(context) }?.second ?: ""
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showWidgets = true }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Widget styles", fontSize = 14.sp, color = NumioTextPrimary)
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text("Poster: $posterLabel · Card: $fontLabel", fontSize = 12.sp, color = NumioTextMuted)
+                    }
+                    Text("›", fontSize = 26.sp, color = AppColor.accent.value)
+                }
             }
             Spacer(modifier = Modifier.height(10.dp))
         }

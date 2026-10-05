@@ -23,8 +23,7 @@ import com.rr.numio.clock.widget.WidgetFonts
 
 /** Same font the widget uses, so the preview matches exactly. */
 private fun previewFamily(key: String): FontFamily =
-    if (key == "script") FontFamily(Font(R.font.dancing_script))
-    else FontFamily(
+    FontFamily(
         Typeface(
             android.graphics.Typeface.create(
                 WidgetFonts.family(key),

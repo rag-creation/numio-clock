@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -12,95 +13,102 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rr.numio.clock.R
 import com.rr.numio.clock.ui.theme.*
 import com.rr.numio.clock.widget.PosterRenderer
 import com.rr.numio.clock.widget.PosterStyles
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-private fun styleFont(key: String) = when (key) {
-    "script" -> FontFamily(Font(R.font.dancing_script))
-    "bold" -> FontFamily(Font(R.font.bangers))
-    "bubble", "bubble_clear" -> FontFamily(Font(R.font.baloo2_extrabold))
-    else -> FontFamily(Font(R.font.permanent_marker))
-}
-
+/**
+ * Poster widget gallery: every style gets its own card with a live preview,
+ * drawn by the same code as the real widget. Tap a card to use that style.
+ */
 @Composable
-fun PosterStylePicker() {
+fun PosterStyleGallery() {
     val context = LocalContext.current
     var selected by remember { mutableStateOf(PosterStyles.current(context)) }
     val accent = AppColor.accent.value
 
-    // The real widget image, so the preview is exactly what you'll get
-    val preview = remember(selected, accent) {
-        PosterRenderer.render(context, 800, 420, selected).asImageBitmap()
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PosterStyles.options.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (key, label) ->
+                    PosterCard(
+                        key = key,
+                        label = label,
+                        isSelected = key == selected,
+                        accentArgb = accent.value.toLong(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        selected = key
+                        PosterStyles.save(context, key) // updates widgets immediately
+                    }
+                }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PosterCard(
+    key: String,
+    label: String,
+    isSelected: Boolean,
+    accentArgb: Long,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val accent = AppColor.accent.value
+
+    // Draw the preview off the main thread; redraw when the accent colour changes
+    val preview by produceState<ImageBitmap?>(initialValue = null, key, accentArgb) {
+        value = withContext(Dispatchers.Default) {
+            PosterRenderer.render(context, 600, 300, key).asImageBitmap()
+        }
     }
 
-    Column {
-        Text("Poster widget style", fontSize = 14.sp, color = NumioTextPrimary)
-        Spacer(modifier = Modifier.height(12.dp))
-
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) accent.copy(alpha = 0.10f) else Color(0xFF1B1B1B))
+            .then(
+                if (isSelected) Modifier.border(1.5.dp, accent.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(6.dp)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF2A2420))
-                .padding(8.dp),
+                .aspectRatio(2f)
+                .clip(RoundedCornerShape(11.dp))
+                .background(Color(0xFF2A2420)),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                bitmap = preview,
-                contentDescription = "Poster widget preview",
-                modifier = Modifier.fillMaxWidth().aspectRatio(800f / 420f)
-            )
+            preview?.let {
+                Image(bitmap = it, contentDescription = "$label preview", modifier = Modifier.fillMaxSize())
+            }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 3 per row, so longer names like "Sketch Clear" have room
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PosterStyles.options.chunked(3).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 2.dp, top = 7.dp, bottom = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, fontSize = 13.sp, color = if (isSelected) accent else NumioTextSecondary)
+            if (isSelected) {
+                Box(
+                    modifier = Modifier.size(17.dp).clip(CircleShape).background(accent),
+                    contentAlignment = Alignment.Center
                 ) {
-                    row.forEach { (key, label) ->
-                        val isSelected = key == selected
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) accent.copy(alpha = 0.12f) else Color(0xFF1F1F1F))
-                                .then(
-                                    if (isSelected) Modifier.border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                                    else Modifier
-                                )
-                                .clickable {
-                                    selected = key
-                                    PosterStyles.save(context, key) // updates widgets immediately
-                                }
-                                .padding(horizontal = 6.dp, vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                label,
-                                fontSize = 15.sp,
-                                fontFamily = styleFont(key),
-                                textAlign = TextAlign.Center,
-                                lineHeight = 17.sp,
-                                color = if (isSelected) accent else NumioTextSecondary
-                            )
-                        }
-                    }
-                    // keep the last row's buttons the same width
-                    repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                    Text("✓", fontSize = 10.sp, color = Color(0xFF111111))
                 }
             }
         }

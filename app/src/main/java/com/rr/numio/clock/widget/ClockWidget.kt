@@ -71,6 +71,10 @@ open class ClockWidget : AppWidgetProvider() {
             manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).forEach { id ->
                 manager.updateAppWidget(id, buildPosterViews(context, manager.getAppWidgetOptions(id)))
             }
+            // Type clock (2×2) is a picture too
+            manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).forEach { id ->
+                manager.updateAppWidget(id, buildTypeViews(context, manager.getAppWidgetOptions(id)))
+            }
             schedulePosterTick(context)
         }
 
@@ -92,6 +96,19 @@ open class ClockWidget : AppWidgetProvider() {
             return views
         }
 
+        private fun buildTypeViews(context: Context, options: Bundle): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_poster)
+            val density = context.resources.displayMetrics.density
+            val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 140).takeIf { it > 0 } ?: 140
+            val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 140).takeIf { it > 0 } ?: 140
+            // Square board: draw at the smaller side, capped to keep the bitmap small
+            val side = (minOf(wDp, hDp) * density).coerceAtMost(700f).toInt()
+            views.setImageViewBitmap(R.id.poster_image, TypeClockRenderer.render(context, side, side))
+            views.setContentDescription(R.id.poster_image, TypeClockRenderer.description(context))
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+            return views
+        }
+
         // ── Poster minute tick ───────────────────────────────────────────────
         // The poster is a picture, so it needs a redraw every minute.
         // RTC (not RTC_WAKEUP): never wakes the phone; if the screen is off,
@@ -107,7 +124,8 @@ open class ClockWidget : AppWidgetProvider() {
 
         fun schedulePosterTick(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty()
+            val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty()
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!hasPoster) {
                 alarmManager.cancel(tickIntent(context))
@@ -181,6 +199,9 @@ class ClockWidgetClear : ClockWidget()
 /** Poster variant — hand-lettered collage style. */
 class ClockWidgetPoster : ClockWidget()
 
+/** Type clock — 2×2 two-colour digits with the date. */
+class ClockWidgetType : ClockWidget()
+
 /**
  * Widget fonts. Widgets can't change fonts from code, so each font has its own
  * layout file (generated from widget_clock.xml / widget_clock_clear.xml).
@@ -197,11 +218,9 @@ object WidgetFonts {
         "condensed" to "Condensed",
         "mono" to "Mono",
         "serif" to "Serif"
-        // "script" (Dancing Script) is hidden: launchers can't load bundled fonts in
-        // text widgets. It can come back once the card widget is drawn as an image too.
     )
 
-    /** Android system font family name for each key ("script" is bundled, see previewFamily) */
+    /** Android system font family name for each key */
     fun family(key: String): String = when (key) {
         "thin" -> "sans-serif-thin"
         "bold" -> "sans-serif-black"
@@ -228,7 +247,6 @@ object WidgetFonts {
         "condensed" -> R.layout.widget_clock_condensed to R.layout.widget_clock_clear_condensed
         "mono" -> R.layout.widget_clock_mono to R.layout.widget_clock_clear_mono
         "serif" -> R.layout.widget_clock_serif to R.layout.widget_clock_clear_serif
-        "script" -> R.layout.widget_clock_script to R.layout.widget_clock_clear_script
         else -> R.layout.widget_clock to R.layout.widget_clock_clear
     }
 }

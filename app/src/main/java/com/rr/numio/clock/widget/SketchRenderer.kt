@@ -56,8 +56,11 @@ object SketchRenderer {
             in 'A'..'Z' -> LETTERS[c - 'A']
             else -> return null
         }
-        return cache.getOrPut(id) {
-            BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
+        // Settings draws several previews at once, so keep the cache thread-safe
+        return synchronized(cache) {
+            cache.getOrPut(id) {
+                BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
+            }
         }
     }
 

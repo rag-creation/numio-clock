@@ -2,6 +2,8 @@
 
 A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Compose. No ads. No tracking. No internet permission. Just a clock.
 
+🌐 Part of [Numio](https://getnumio.org) — small, honest apps made by a Keralite.
+
 ## Features
 
 - ✅ Analog + digital clock with three dial styles
@@ -68,6 +70,6 @@ Issues and pull requests are welcome! If you find a bug or have a feature idea, 
 
 ## About
 
-The second app in the Numio family, after [Numio Calculator](https://github.com/rag-creation/numio). Built because I kept hitting the wrong snooze button — with the help of Claude AI as my coding assistant.
+The second app in the [Numio](https://getnumio.org) family, after [Numio Calculator](https://github.com/rag-creation/numio). Built because I kept hitting the wrong snooze button — with the help of Claude AI as my coding assistant.
 
 With Lo❤️e, R.R

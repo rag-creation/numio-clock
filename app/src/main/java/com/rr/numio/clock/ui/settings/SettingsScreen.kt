@@ -428,6 +428,14 @@ fun SettingsScreen() {
                 )
                 SettingsDivider()
                 SettingsRow(
+                    label = "Website",
+                    value = "getnumio.org →",
+                    onClick = {
+                        uriHandler.openUri("https://getnumio.org")
+                    }
+                )
+                SettingsDivider()
+                SettingsRow(
                     label = "Source code",
                     value = "GitHub →",
                     onClick = {

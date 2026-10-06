@@ -1,10 +1,29 @@
-# Clock by Numio
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" width="128" alt="Clock by Numio icon" />
+</p>
 
-A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Compose. No ads. No tracking. No internet permission. Just a clock.
+<h1 align="center">Clock by Numio</h1>
 
-🌐 Part of [Numio](https://getnumio.org) — small, honest apps made by a Keralite.
+<p align="center">
+  A clean, minimal, open-source Android clock app built with Kotlin &amp; Jetpack Compose.<br/>
+  No ads. No tracking. No internet permission. Just a clock.
+</p>
 
-## Features
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android-green" alt="Platform: Android" />
+  <img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="License: GPL-3.0" />
+  <img src="https://img.shields.io/badge/Kotlin-100%25-purple" alt="Kotlin 100%" />
+  <img src="https://img.shields.io/badge/Min%20SDK-26-orange" alt="Min SDK 26" />
+  <img src="https://img.shields.io/github/v/release/rag-creation/numio-clock" alt="Latest release" />
+  <img src="https://img.shields.io/badge/Internet-none-brightgreen" alt="Internet: none" />
+  <img src="https://img.shields.io/badge/Ads-none-brightgreen" alt="Ads: none" />
+</p>
+
+<p align="center">🌐 Part of <a href="https://getnumio.org">Numio</a> — small, honest apps made by a Keralite.</p>
+
+---
+
+## ✨ Features
 
 - ✅ Analog + digital clock with three dial styles
 - ✅ World clocks — add, remove and reorder cities (correct half-hour zones and daylight saving)
@@ -25,24 +44,24 @@ A clean, minimal, open-source Android clock app built with Kotlin & Jetpack Comp
 - ✅ A little easter egg 🤫
 - ✅ 100% offline — nothing ever leaves your device
 
-## Download
+## 📲 Download
 
 Get the latest APK from [Releases](https://github.com/rag-creation/numio-clock/releases/latest).
 
 F-Droid version coming soon.
 
-## Requirements
+## 📱 Requirements
 
 - Android 8.0 (API 26) or higher
 
-## Built With
+## 🛠️ Built With
 
 - [Kotlin](https://kotlinlang.org/)
 - [Jetpack Compose](https://developer.android.com/jetpack/compose)
 - [DataStore](https://developer.android.com/jetpack/androidx/releases/datastore)
 - [Navigation Compose](https://developer.android.com/jetpack/compose/navigation)
 
-## Fonts
+## 🔤 Fonts
 
 The poster and type clock widgets use these fonts, bundled in the app (no internet, no tracking).
 Licenses are in the [licenses](licenses/) folder:
@@ -60,15 +79,15 @@ Licenses are in the [licenses](licenses/) folder:
 - [Joti One](https://fonts.google.com/specimen/Joti+One) by Eduardo Tunni (SIL OFL 1.1)
 - [Moirai One](https://fonts.google.com/specimen/Moirai+One) by Jiyeon Park (SIL OFL 1.1), Latin subset
 
-## License
+## 📄 License
 
 GPL-3.0 — see [LICENSE](LICENSE)
 
-## Contributing
+## 🤝 Contributing
 
 Issues and pull requests are welcome! If you find a bug or have a feature idea, open an issue.
 
-## About
+## 💛 About
 
 The second app in the [Numio](https://getnumio.org) family, after [Numio Calculator](https://github.com/rag-creation/numio). Built because I kept hitting the wrong snooze button — with the help of Claude AI as my coding assistant.
 

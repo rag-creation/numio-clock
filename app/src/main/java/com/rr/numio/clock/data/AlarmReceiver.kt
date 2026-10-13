@@ -40,11 +40,31 @@ class AlarmReceiver : BroadcastReceiver() {
                         }
                         context.startForegroundService(serviceIntent)
                     } finally {
+                        // Book the next ring (repeating) or switch off (one-time).
+                        // Without this a weekday alarm only ever rang once.
+                        try {
+                            AlarmRepository(context).onAlarmFired(alarmId)
+                        } catch (e: Exception) {
+                            android.util.Log.e("NumioAlarm", "Reschedule after ring failed", e)
+                        }
                         pendingResult.finish()
                     }
                 }
             }
-            Intent.ACTION_BOOT_COMPLETED -> { }
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" -> {
+                val pendingResult = goAsync()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        AlarmRepository(context).rescheduleAll()
+                    } finally {
+                        pendingResult.finish()
+                    }
+                }
+            }
         }
     }
 }

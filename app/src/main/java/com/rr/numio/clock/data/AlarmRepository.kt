@@ -61,6 +61,36 @@ class AlarmRepository(private val context: Context) {
         saveAlarms(current)
     }
 
+    /**
+     * Android forgets every alarm on reboot, and each weekday alarm is only
+     * booked once. Call this on boot, on clock/time zone changes and on app
+     * start so every enabled alarm is booked again for its next ring.
+     */
+    suspend fun rescheduleAll() {
+        getCurrentAlarms().filter { it.isEnabled }.forEach {
+            AlarmScheduler.schedule(context, it)
+        }
+    }
+
+    /**
+     * Called right after an alarm rings.
+     * Repeating alarm: book the same weekday for next week.
+     * One-time alarm: switch it off, it has done its job.
+     */
+    suspend fun onAlarmFired(id: Int) {
+        val current = getCurrentAlarms().toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index == -1) return
+        val alarm = current[index]
+        if (!alarm.isEnabled) return
+        if (alarm.days.any { it }) {
+            AlarmScheduler.schedule(context, alarm)
+        } else {
+            current[index] = alarm.copy(isEnabled = false)
+            saveAlarms(current)
+        }
+    }
+
     private suspend fun getCurrentAlarms(): List<AlarmModel> {
         var result = emptyList<AlarmModel>()
         context.dataStore.edit { prefs ->

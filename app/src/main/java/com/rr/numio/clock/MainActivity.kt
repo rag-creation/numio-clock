@@ -2,6 +2,8 @@ package com.rr.numio.clock
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -62,6 +64,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Safety net: make sure every enabled alarm is really booked with Android
+        lifecycleScope.launch {
+            com.rr.numio.clock.data.AlarmRepository(applicationContext).rescheduleAll()
+        }
 
         val navigateToFiring = intent?.getBooleanExtra("navigate_to_firing", false) == true
         val alarmHour   = intent?.getIntExtra("alarm_hour", 7) ?: 7

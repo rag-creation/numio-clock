@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -71,7 +72,7 @@ fun WidgetsScreen(onBack: () -> Unit) {
                 Text("Card & Clear · resizable", fontSize = 10.sp, color = NumioTextMuted.copy(alpha = 0.7f))
             }
             Spacer(modifier = Modifier.height(12.dp))
-            SettingsCard { WorldCountPicker() }
+            SettingsCard { WorldCityPicker() }
             Spacer(modifier = Modifier.height(26.dp))
         }
 
@@ -84,30 +85,49 @@ fun WidgetsScreen(onBack: () -> Unit) {
     }
 }
 
-/** How many of your world clock cities the World widget shows. */
+/** Pick which of your world clock cities the World widget shows (up to 4). */
 @Composable
-private fun WorldCountPicker() {
+private fun WorldCityPicker() {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var count by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(com.rr.numio.clock.widget.WorldWidget.count(context)) }
+    val cities by com.rr.numio.clock.data.WorldCityStore.getCities(context)
+        .collectAsState(initial = emptyList())
+    val widget = com.rr.numio.clock.widget.WorldWidget
+    var chosen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(widget.chosen(context)) }
+    // Until something is picked, the widget shows the first 3.
+    val ticked = chosen ?: cities.take(3).map { it.name }
     val accent = AppColor.accent.value
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Cities on the widget", fontSize = 15.sp, color = NumioTextPrimary)
-        Text("The first ones from your World clock list", fontSize = 12.sp, color = NumioTextMuted)
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(2, 3, 4).forEach { n ->
-                val on = n == count
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text("Cities on the widget", fontSize = 15.sp, color = NumioTextPrimary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+        Text("Tick up to ${widget.MAX}. Add more cities in the Clock tab.", fontSize = 12.sp, color = NumioTextMuted,
+            modifier = Modifier.padding(horizontal = 16.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+        cities.forEach { city ->
+            val on = city.name in ticked
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val next = if (on) ticked - city.name else ticked + city.name
+                        if (next.size > widget.MAX) {
+                            android.widget.Toast.makeText(context, "Up to ${widget.MAX} cities", android.widget.Toast.LENGTH_SHORT).show()
+                        } else if (next.isNotEmpty()) {
+                            chosen = next
+                            widget.saveChosen(context, next)
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(city.name, fontSize = 16.sp, color = if (on) accent else NumioTextPrimary,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                        .background(if (on) accent.copy(alpha = 0.18f) else NumioTextMuted.copy(alpha = 0.08f))
-                        .clickable { count = n; com.rr.numio.clock.widget.WorldWidget.saveCount(context, n) },
+                        .size(24.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(7.dp))
+                        .background(if (on) accent else NumioTextMuted.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("$n cities", fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                        color = if (on) accent else NumioTextPrimary)
+                    if (on) Text("✓", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.Black)
                 }
             }
         }

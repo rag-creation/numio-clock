@@ -13,7 +13,7 @@ import java.time.ZoneId
 import kotlin.math.abs
 
 /**
- * World clock widget: the first 2, 3 or 4 cities from the World clock tab. Each time is a TextClock set to
+ * World clock widget: up to 4 cities you choose from the World clock tab. Each time is a TextClock set to
  * the city's time zone, so it ticks by itself. The note under each name ("Tomorrow · +9",
  * "+1:30") and the sun/moon are refreshed with the poster minute tick.
  */
@@ -26,21 +26,38 @@ object WorldWidget {
     )
 
     private const val PREFS = "numio_prefs"
-    private const val KEY_COUNT = "world_widget_count"
+    private const val KEY_CITIES = "world_widget_cities"
+    const val MAX = 4
 
-    /** How many cities the widget shows: 2, 3 or 4 (chosen in Settings → Widgets). */
-    fun count(context: Context): Int =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_COUNT, 3).coerceIn(2, 4)
+    /** The cities chosen for the widget (names), or null if none chosen yet. */
+    fun chosen(context: Context): List<String>? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_CITIES, null)
+            ?.split('|')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
 
-    fun saveCount(context: Context, n: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_COUNT, n.coerceIn(2, 4)).apply()
+    fun saveChosen(context: Context, names: List<String>) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_CITIES, names.joinToString("|")).apply()
         ClockWidget.updateAll(context)
     }
 
-    fun build(context: Context, clear: Boolean = false): RemoteViews {
+    /** The cities to show: the chosen ones (in World clock order), or the first 3 if none are chosen. */
+    private fun citiesFor(context: Context): List<com.rr.numio.clock.data.WorldCity> {
+        val all = runCatching { runBlocking { WorldCityStore.getCities(context).first() } }.getOrDefault(emptyList())
+        val names = chosen(context)
+        val picked = if (names == null) all.take(3) else all.filter { it.name in names }
+        return picked.ifEmpty { all.take(3) }.take(MAX)
+    }
+
+    fun build(context: Context, clear: Boolean = false, options: android.os.Bundle? = null): RemoteViews {
         val views = RemoteViews(context.packageName, if (clear) R.layout.widget_world_clear else R.layout.widget_world)
-        val cities = runCatching { runBlocking { WorldCityStore.getCities(context).first() } }.getOrDefault(emptyList())
-            .take(count(context))
+        val cities = citiesFor(context)
+
+        // Text grows with the widget: each city gets an equal share of the height.
+        val wDp = options?.getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)?.takeIf { it > 0 } ?: 250
+        val hDp = options?.getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180)?.takeIf { it > 0 } ?: 180
+        val rowDp = (hDp - 20f) / maxOf(1, cities.size)
+        val timeSp = minOf(rowDp * 0.42f, wDp * 0.13f).coerceIn(18f, 54f)
+        val nameSp = (timeSp * 0.62f).coerceIn(13f, 30f)
+        val noteSp = (timeSp * 0.44f).coerceIn(10f, 20f)
         val now = Instant.now()
         val here = ZoneId.systemDefault()
         val hereDate = now.atZone(here).toLocalDate()
@@ -60,6 +77,9 @@ object WorldWidget {
             val night = there.hour < 6 || there.hour >= 18
             views.setTextViewText(nameId, (if (night) "🌙 " else "☀️ ") + city.name)
             views.setString(timeId, "setTimeZone", tz.id)
+            views.setTextViewTextSize(timeId, android.util.TypedValue.COMPLEX_UNIT_SP, timeSp)
+            views.setTextViewTextSize(nameId, android.util.TypedValue.COMPLEX_UNIT_SP, nameSp)
+            views.setTextViewTextSize(noteId, android.util.TypedValue.COMPLEX_UNIT_SP, noteSp)
 
             val diff = zone.rules.getOffset(now).totalSeconds / 60 - hereOffset
             val diffText = when {

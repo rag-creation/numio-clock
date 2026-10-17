@@ -78,7 +78,7 @@ open class ClockWidget : AppWidgetProvider() {
             // World clock: live times per city; notes and sun/moon refresh with the minute tick
             for ((cls, clear) in listOf(ClockWidgetWorld::class.java to false, ClockWidgetWorldClear::class.java to true)) {
                 manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
-                    manager.updateAppWidget(id, WorldWidget.build(context, clear).apply {
+                    manager.updateAppWidget(id, WorldWidget.build(context, clear, manager.getAppWidgetOptions(id)).apply {
                         setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
                     })
                 }

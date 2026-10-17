@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Clock by Numio</string>
+    <string name="widget_world_description">Your world clock cities, with their time and how far ahead or behind they are</string>
 </resources>

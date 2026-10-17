@@ -75,6 +75,12 @@ open class ClockWidget : AppWidgetProvider() {
             manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).forEach { id ->
                 manager.updateAppWidget(id, buildTypeViews(context, manager.getAppWidgetOptions(id)))
             }
+            // World clock: live times per city; notes and sun/moon refresh with the minute tick
+            manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).forEach { id ->
+                manager.updateAppWidget(id, WorldWidget.build(context).apply {
+                    setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+                })
+            }
             schedulePosterTick(context)
         }
 
@@ -125,7 +131,8 @@ open class ClockWidget : AppWidgetProvider() {
         fun schedulePosterTick(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty() ||
-                manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty()
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).isNotEmpty()
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!hasPoster) {
                 alarmManager.cancel(tickIntent(context))
@@ -201,6 +208,9 @@ class ClockWidgetPoster : ClockWidget()
 
 /** Type clock — 2×2 two-colour digits with the date. */
 class ClockWidgetType : ClockWidget()
+
+/** World clock — your world clock cities with their live times. */
+class ClockWidgetWorld : ClockWidget()
 
 /**
  * Widget fonts. Widgets can't change fonts from code, so each font has its own

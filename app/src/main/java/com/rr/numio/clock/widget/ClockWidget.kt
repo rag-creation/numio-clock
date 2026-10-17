@@ -76,10 +76,12 @@ open class ClockWidget : AppWidgetProvider() {
                 manager.updateAppWidget(id, buildTypeViews(context, manager.getAppWidgetOptions(id)))
             }
             // World clock: live times per city; notes and sun/moon refresh with the minute tick
-            manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).forEach { id ->
-                manager.updateAppWidget(id, WorldWidget.build(context).apply {
-                    setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
-                })
+            for ((cls, clear) in listOf(ClockWidgetWorld::class.java to false, ClockWidgetWorldClear::class.java to true)) {
+                manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
+                    manager.updateAppWidget(id, WorldWidget.build(context, clear).apply {
+                        setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+                    })
+                }
             }
             schedulePosterTick(context)
         }
@@ -132,7 +134,8 @@ open class ClockWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(context)
             val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty() ||
                 manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty() ||
-                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).isNotEmpty()
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldClear::class.java)).isNotEmpty()
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!hasPoster) {
                 alarmManager.cancel(tickIntent(context))
@@ -211,6 +214,9 @@ class ClockWidgetType : ClockWidget()
 
 /** World clock — your world clock cities with their live times. */
 class ClockWidgetWorld : ClockWidget()
+
+/** World clock without the card, for any wallpaper. */
+class ClockWidgetWorldClear : ClockWidget()
 
 /**
  * Widget fonts. Widgets can't change fonts from code, so each font has its own

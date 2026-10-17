@@ -13,7 +13,7 @@ import java.time.ZoneId
 import kotlin.math.abs
 
 /**
- * World clock widget: the first 4 cities from the World clock tab. Each time is a TextClock set to
+ * World clock widget: the first 2, 3 or 4 cities from the World clock tab. Each time is a TextClock set to
  * the city's time zone, so it ticks by itself. The note under each name ("Tomorrow · +9",
  * "+1:30") and the sun/moon are refreshed with the poster minute tick.
  */
@@ -25,9 +25,22 @@ object WorldWidget {
         Triple(R.id.world_row_3, R.id.world_name_3, R.id.world_note_3) to R.id.world_time_3,
     )
 
-    fun build(context: Context): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.widget_world)
+    private const val PREFS = "numio_prefs"
+    private const val KEY_COUNT = "world_widget_count"
+
+    /** How many cities the widget shows: 2, 3 or 4 (chosen in Settings → Widgets). */
+    fun count(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_COUNT, 3).coerceIn(2, 4)
+
+    fun saveCount(context: Context, n: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_COUNT, n.coerceIn(2, 4)).apply()
+        ClockWidget.updateAll(context)
+    }
+
+    fun build(context: Context, clear: Boolean = false): RemoteViews {
+        val views = RemoteViews(context.packageName, if (clear) R.layout.widget_world_clear else R.layout.widget_world)
         val cities = runCatching { runBlocking { WorldCityStore.getCities(context).first() } }.getOrDefault(emptyList())
+            .take(count(context))
         val now = Instant.now()
         val here = ZoneId.systemDefault()
         val hereDate = now.atZone(here).toLocalDate()
@@ -45,7 +58,7 @@ object WorldWidget {
             val zone = tz.toZoneId()
             val there = now.atZone(zone)
             val night = there.hour < 6 || there.hour >= 18
-            views.setTextViewText(nameId, (if (night) "☾ " else "☀ ") + city.name)
+            views.setTextViewText(nameId, (if (night) "🌙 " else "☀️ ") + city.name)
             views.setString(timeId, "setTimeZone", tz.id)
 
             val diff = zone.rules.getOffset(now).totalSeconds / 60 - hereOffset

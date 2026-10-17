@@ -48,15 +48,18 @@ object WorldWidget {
     }
 
     fun build(context: Context, clear: Boolean = false, options: android.os.Bundle? = null): RemoteViews {
-        val views = RemoteViews(context.packageName, if (clear) R.layout.widget_world_clear else R.layout.widget_world)
+        // Same font as the Card & Clear widgets, and the app's accent colour for the times.
+        val (cardLayout, clearLayout) = WidgetFonts.worldLayouts(WidgetFonts.current(context))
+        val views = RemoteViews(context.packageName, if (clear) clearLayout else cardLayout)
         val cities = citiesFor(context)
+        val accent = PosterStyles.accent(context)
 
         // Text grows with the widget: each city gets an equal share of the height.
         val wDp = options?.getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)?.takeIf { it > 0 } ?: 250
         val hDp = options?.getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180)?.takeIf { it > 0 } ?: 180
         val rowDp = (hDp - 20f) / maxOf(1, cities.size)
         val timeSp = minOf(rowDp * 0.42f, wDp * 0.13f).coerceIn(18f, 54f)
-        val nameSp = (timeSp * 0.62f).coerceIn(13f, 30f)
+        val nameSp = (timeSp * 0.55f).coerceIn(13f, 26f)
         val noteSp = (timeSp * 0.44f).coerceIn(10f, 20f)
         val now = Instant.now()
         val here = ZoneId.systemDefault()
@@ -78,7 +81,10 @@ object WorldWidget {
             views.setTextViewText(nameId, (if (night) "🌙 " else "☀️ ") + city.name)
             views.setString(timeId, "setTimeZone", tz.id)
             views.setTextViewTextSize(timeId, android.util.TypedValue.COMPLEX_UNIT_SP, timeSp)
-            views.setTextViewTextSize(nameId, android.util.TypedValue.COMPLEX_UNIT_SP, nameSp)
+            // Long names (Pathanamthitta) shrink a little instead of being cut off.
+            val fit = if (city.name.length > 9) 9f / city.name.length else 1f
+            views.setTextViewTextSize(nameId, android.util.TypedValue.COMPLEX_UNIT_SP, (nameSp * fit).coerceAtLeast(11f))
+            views.setTextColor(timeId, accent)
             views.setTextViewTextSize(noteId, android.util.TypedValue.COMPLEX_UNIT_SP, noteSp)
 
             val diff = zone.rules.getOffset(now).totalSeconds / 60 - hereOffset

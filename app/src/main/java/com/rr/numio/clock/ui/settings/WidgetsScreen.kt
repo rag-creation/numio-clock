@@ -77,7 +77,7 @@ fun WidgetsScreen(onBack: () -> Unit) {
         }
 
         item {
-            SettingsSectionTitle("Card & Clear widgets")
+            SettingsSectionTitle("Card, Clear & World widgets")
             Spacer(modifier = Modifier.height(12.dp))
             SettingsCard { WidgetFontPicker() }
             Spacer(modifier = Modifier.height(32.dp))

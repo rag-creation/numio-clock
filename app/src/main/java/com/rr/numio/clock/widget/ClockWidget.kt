@@ -256,6 +256,16 @@ object WidgetFonts {
         ClockWidget.updateAll(context)
     }
 
+    /** (card layout, clear layout) of the World widget for a font key */
+    fun worldLayouts(key: String): Pair<Int, Int> = when (key) {
+        "thin" -> R.layout.widget_world_thin to R.layout.widget_world_clear_thin
+        "bold" -> R.layout.widget_world_bold to R.layout.widget_world_clear_bold
+        "condensed" -> R.layout.widget_world_condensed to R.layout.widget_world_clear_condensed
+        "mono" -> R.layout.widget_world_mono to R.layout.widget_world_clear_mono
+        "serif" -> R.layout.widget_world_serif to R.layout.widget_world_clear_serif
+        else -> R.layout.widget_world to R.layout.widget_world_clear
+    }
+
     /** (card layout, clear layout) for a font key */
     fun layouts(key: String): Pair<Int, Int> = when (key) {
         "thin" -> R.layout.widget_clock_thin to R.layout.widget_clock_clear_thin

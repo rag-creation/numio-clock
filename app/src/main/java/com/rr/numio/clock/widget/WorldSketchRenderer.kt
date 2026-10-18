@@ -103,19 +103,6 @@ object WorldSketchRenderer {
             if (shadow) setShadowLayer(stroke * 1.2f, stroke * 0.4f, stroke * 0.8f, S.SHADOW)
         }
 
-        if (boxed) {
-            canvas.drawRoundRect(card, radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = S.PAPER })
-            val fiber = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = S.FIBER; strokeWidth = stroke * 0.35f; strokeCap = Paint.Cap.ROUND }
-            canvas.save(); canvas.clipRect(card)
-            repeat(80) {
-                val fx = card.left + rnd.nextFloat() * cw; val fy = card.top + rnd.nextFloat() * ch
-                val len = ch * (0.01f + rnd.nextFloat() * 0.03f); val ang = rnd.nextFloat() * Math.PI.toFloat()
-                canvas.drawLine(fx, fy, fx + len * cos(ang), fy + len * sin(ang), fiber)
-            }
-            canvas.restore()
-            canvas.drawPath(S.wobblyRect(card, radius, stroke * 0.8f, rnd), ink)
-        }
-
         val gold = if (boxed) S.darken(accent, 0.12f) else accent
         val list = cities.take(4).ifEmpty { return }
         val pad = ch * 0.06f
@@ -147,7 +134,7 @@ object WorldSketchRenderer {
             textSize = hAvail * 0.06f
             if (shadow) setShadowLayer(textSize * 0.25f, 0f, textSize * 0.08f, S.SHADOW)
         }
-        while (list.any { namePaint.measureText(label(it.name)) > colW * 0.94f } && namePaint.textSize > 6f) namePaint.textSize *= 0.94f
+        while (list.any { namePaint.measureText(label(it.name)) > colW * 0.88f } && namePaint.textSize > 6f) namePaint.textSize *= 0.94f
         val utcPaint = android.text.TextPaint(namePaint).apply {
             typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
             letterSpacing = 0.06f
@@ -162,6 +149,23 @@ object WorldSketchRenderer {
         val artH = (hAvail - fixed).coerceAtMost(colW * 0.78f).coerceAtLeast(hAvail * 0.2f)
         val total = fixed + artH
         val top = card.top + pad + (hAvail - total).coerceAtLeast(0f) / 2f
+
+        if (boxed) {
+            // The paper hugs the cities, so a tall widget has no empty paper above and below them
+            val paper = RectF(card.left, (top - pad).coerceAtLeast(card.top), card.right, (top + total + pad).coerceAtMost(card.bottom))
+            val pr = minOf(radius, paper.height() * 0.08f)
+            canvas.drawRoundRect(paper, pr, pr, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = S.PAPER })
+            val fiber = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = S.FIBER; strokeWidth = stroke * 0.35f; strokeCap = Paint.Cap.ROUND }
+            canvas.save(); canvas.clipRect(paper)
+            repeat((80 * paper.height() / ch).toInt().coerceAtLeast(30)) {
+                val fx = paper.left + rnd.nextFloat() * paper.width(); val fy = paper.top + rnd.nextFloat() * paper.height()
+                val len = ch * (0.01f + rnd.nextFloat() * 0.03f); val ang = rnd.nextFloat() * Math.PI.toFloat()
+                canvas.drawLine(fx, fy, fx + len * cos(ang), fy + len * sin(ang), fiber)
+            }
+            canvas.restore()
+            canvas.drawPath(S.wobblyRect(paper, pr, stroke * 0.8f, rnd), ink)
+        }
+
 
         list.forEachIndexed { i, city ->
             val cx = card.left + pad + colW * i + colW / 2f

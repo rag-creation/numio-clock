@@ -18,6 +18,11 @@ android {
     }
 
     buildTypes {
+        // Test builds (Android Studio Run, GitHub) install as a separate "Clock Test" app,
+        // so the real Clock and its alarms are never touched.
+        debug {
+            applicationIdSuffix = ".test"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Test builds install next to the real Clock (see applicationIdSuffix), under their own name. -->
+<resources>
+    <string name="app_name">Clock Test</string>
+</resources>

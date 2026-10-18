@@ -38,6 +38,9 @@ object WorldSketchRenderer {
         "london" to R.drawable.city_london, "sydney" to R.drawable.city_sydney, "dubai" to R.drawable.city_dubai,
         "tokyo" to R.drawable.city_tokyo, "bangkok" to R.drawable.city_bangkok, "losangeles" to R.drawable.city_losangeles,
         "sanfrancisco" to R.drawable.city_sanfrancisco, "singapore" to R.drawable.city_singapore,
+        "chicago" to R.drawable.city_chicago, "mumbai" to R.drawable.city_mumbai, "dhaka" to R.drawable.city_dhaka,
+        "auckland" to R.drawable.city_auckland, "johannesburg" to R.drawable.city_johannesburg,
+        "cairo" to R.drawable.city_cairo, "nairobi" to R.drawable.city_nairobi,
     )
 
     private val cache = HashMap<String, Bitmap>()
@@ -243,7 +246,7 @@ object WorldSketchRenderer {
         if (sign == "+") c.drawLine(x, y - s, x, y + s, p)
     }
 
-    /** For cities without a drawing yet: a small hand-drawn globe. */
+    /** For a city without a drawing: a small hand-drawn globe. */
     private fun drawGlobe(c: Canvas, box: RectF, ink: Paint, gold: Int, stroke: Float) {
         val r = minOf(box.width(), box.height()) * 0.38f
         val x = box.centerX(); val y = box.bottom - r * 1.1f

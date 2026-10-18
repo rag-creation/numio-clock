@@ -106,7 +106,7 @@ object WorldSketchRenderer {
         val gold = if (boxed) S.darken(accent, 0.12f) else accent
         val list = cities.take(4).ifEmpty { return }
         val pad = ch * 0.06f
-        val colW = (cw - pad * 2) / list.size
+        val colW = (cw - pad * 1.2f) / list.size
         val now = Instant.now()
         val is24 = android.text.format.DateFormat.is24HourFormat(context)
 
@@ -145,8 +145,13 @@ object WorldSketchRenderer {
         val utcH = utcPaint.textSize
 
         // The drawing gets what's left, up to a nice proportion of the column
-        val fixed = th + gap + sunD + gap + gap * 1.1f + nameH + gap * 0.45f + utcH
-        val artH = (hAvail - fixed).coerceAtMost(colW * 0.78f).coerceAtLeast(hAvail * 0.2f)
+        val fixed = th + gap + sunD + gap + gap * 1.1f + nameH + gap * 0.6f + utcH
+        // The drawings are wider than tall, so the column width usually decides their size. Use the
+        // height they really need (the tallest one), so the block stays tight with no gap above them.
+        val artW = colW * 0.97f
+        val artMax = (hAvail - fixed).coerceAtLeast(hAvail * 0.2f)
+        val arts = list.map { drawing(context, it.name, light = !boxed) }
+        val artH = arts.maxOf { a -> if (a == null) artMax * 0.7f else minOf(artMax, artW * a.height / a.width) }
         val total = fixed + artH
         val top = card.top + pad + (hAvail - total).coerceAtLeast(0f) / 2f
 
@@ -168,7 +173,7 @@ object WorldSketchRenderer {
 
 
         list.forEachIndexed { i, city ->
-            val cx = card.left + pad + colW * i + colW / 2f
+            val cx = card.left + pad * 0.6f + colW * i + colW / 2f
             val (t, time, ampm) = times[i]
             var y = top
 
@@ -192,8 +197,8 @@ object WorldSketchRenderer {
             y += sunD + gap
 
             // The drawing, as big as it fits, sitting on the same baseline in every column
-            val box = RectF(cx - colW * 0.47f, y, cx + colW * 0.47f, y + artH)
-            val art = drawing(context, city.name, light = !boxed)
+            val box = RectF(cx - artW / 2f, y, cx + artW / 2f, y + artH)
+            val art = arts[i]
             if (art != null) {
                 val scale = minOf(box.width() / art.width, box.height() / art.height)
                 val dw = art.width * scale; val dh = art.height * scale
@@ -207,7 +212,7 @@ object WorldSketchRenderer {
             // NAME and UTC offset, clean and centred
             val name = label(city.name)
             canvas.drawText(name, cx - namePaint.measureText(name) / 2f, y + nameH * 0.82f, namePaint)
-            y += nameH + gap * 0.45f
+            y += nameH + gap * 0.6f
             val off = zoneOffsetMinutes(city, now)
             val utc = "UTC" + (if (off < 0) "−" else "+") + (abs(off) / 60) +
                 (if (abs(off) % 60 != 0) ":" + (abs(off) % 60).toString().padStart(2, '0') else "")

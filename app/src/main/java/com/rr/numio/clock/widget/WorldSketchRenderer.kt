@@ -43,6 +43,9 @@ object WorldSketchRenderer {
         "cairo" to R.drawable.city_cairo, "nairobi" to R.drawable.city_nairobi,
     )
 
+    /** Drawings that have their own version for wallpapers (light lines). */
+    private val LIGHT = mapOf("pathanamthitta" to R.drawable.city_pathanamthitta_light)
+
     private val cache = HashMap<String, Bitmap>()
 
     /** "São Paulo" → "saopaulo" */
@@ -56,12 +59,14 @@ object WorldSketchRenderer {
 
     /** The city drawing; for the clear style the dark ink lines are turned light so they show on a dark wallpaper. */
     private fun drawing(context: Context, city: String, light: Boolean): Bitmap? {
-        val id = DRAWINGS[key(city)] ?: return null
+        val k = key(city)
+        val own = if (light) LIGHT[k] else null
+        val id = own ?: DRAWINGS[k] ?: return null
         val cacheKey = "$id/$light"
         return synchronized(cache) {
             cache.getOrPut(cacheKey) {
                 val src = BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
-                if (!light) src else {
+                if (!light || own != null) src else {
                     val px = IntArray(src.width * src.height)
                     src.getPixels(px, 0, src.width, 0, 0, src.width, src.height)
                     for (i in px.indices) {
@@ -69,8 +74,12 @@ object WorldSketchRenderer {
                         val r = Color.red(c); val g = Color.green(c); val b = Color.blue(c)
                         val lum = (r * 299 + g * 587 + b * 114) / 1000
                         val sat = maxOf(r, g, b) - minOf(r, g, b)
-                        // dark, grey-ish ink → warm white; colours (sea, gold, red) stay
-                        if (lum < 120 && sat < 60) px[i] = Color.argb(Color.alpha(c), 246, 240, 226)
+                        // Grey-ish pixels are ink lines or paper: lines become white, the paper fades out
+                        // (so there's no cream halo). Colours (sea, gold, green, red) stay as drawn.
+                        if (sat < 60) {
+                            val keep = ((215 - lum) / 140f).coerceIn(0f, 1f)
+                            px[i] = Color.argb((Color.alpha(c) * keep).toInt(), 246, 242, 234)
+                        }
                     }
                     Bitmap.createBitmap(px, src.width, src.height, Bitmap.Config.ARGB_8888)
                 }
@@ -109,97 +118,96 @@ object WorldSketchRenderer {
 
         val gold = if (boxed) S.darken(accent, 0.12f) else accent
         val list = cities.take(4).ifEmpty { return }
-        val pad = ch * 0.07f
+        val pad = ch * 0.06f
         val colW = (cw - pad * 2) / list.size
         val now = Instant.now()
-        val here = ZoneId.systemDefault()
-        val hereOffset = here.rules.getOffset(now).totalSeconds / 60
         val is24 = android.text.format.DateFormat.is24HourFormat(context)
 
-        // One size for every column, so the row looks even: fit the widest time and name.
         val times = list.map { city ->
             val t = now.atZone(cityTimeZone(city).toZoneId())
             val hh = if (is24) t.hour else (t.hour % 12).let { if (it == 0) 12 else it }
             Triple(t, (if (is24) hh.toString().padStart(2, '0') else hh.toString()) + ":" + t.minute.toString().padStart(2, '0'),
                 if (is24) "" else if (t.hour < 12) "AM" else "PM")
         }
-        var th = ch * 0.21f
-        fun timeW(i: Int) = S.measure(context, times[i].second, th) + if (times[i].third.isEmpty()) 0f else th * 0.08f + S.measure(context, times[i].third, th * 0.32f)
-        while (list.indices.any { timeW(it) > colW * 0.86f } && th > 8f) th *= 0.95f
-        var nh = ch * 0.085f
-        while (list.any { S.measure(context, label(it.name), nh) > colW * 0.9f } && nh > 6f) nh *= 0.94f
-        val oh = nh * 0.72f
 
-        val timeTop = card.top + pad * 1.1f
-        val timeBottom = timeTop + th
-        val utcBottom = card.bottom - pad * 0.9f
-        val nameBottom = utcBottom - oh * 1.7f
-        val artTop = timeBottom + th * 0.35f
-        val artBottom = nameBottom - nh * 0.55f
+        // One block per city, all the same size and centred on the widget:
+        //   time · sun/moon · drawing · NAME · UTC offset
+        val hAvail = ch - pad * 2
+        var th = hAvail * 0.17f
+        fun timeW(i: Int) = S.measure(context, times[i].second, th) +
+            if (times[i].third.isEmpty()) 0f else th * 0.1f + S.measure(context, times[i].third, th * 0.3f)
+        while (list.indices.any { timeW(it) > colW * 0.84f } && th > 8f) th *= 0.95f
+        val sunD = minOf(hAvail * 0.075f, th * 0.55f)
+        val gap = hAvail * 0.035f
+
+        val namePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.12f
+            color = inkColor
+            textSize = hAvail * 0.06f
+            if (shadow) setShadowLayer(textSize * 0.25f, 0f, textSize * 0.08f, S.SHADOW)
+        }
+        while (list.any { namePaint.measureText(label(it.name)) > colW * 0.94f } && namePaint.textSize > 6f) namePaint.textSize *= 0.94f
+        val utcPaint = android.text.TextPaint(namePaint).apply {
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.06f
+            textSize = namePaint.textSize * 0.78f
+            color = if (boxed) Color.argb(190, 60, 55, 48) else Color.argb(220, 255, 255, 255)
+        }
+        val nameH = namePaint.textSize
+        val utcH = utcPaint.textSize
+
+        // The drawing gets what's left, up to a nice proportion of the column
+        val fixed = th + gap + sunD + gap + gap * 1.1f + nameH + gap * 0.45f + utcH
+        val artH = (hAvail - fixed).coerceAtMost(colW * 0.78f).coerceAtLeast(hAvail * 0.2f)
+        val total = fixed + artH
+        val top = card.top + pad + (hAvail - total).coerceAtLeast(0f) / 2f
 
         list.forEachIndexed { i, city ->
             val cx = card.left + pad + colW * i + colW / 2f
             val (t, time, ampm) = times[i]
+            var y = top
 
-            // Brush stroke behind the time (on paper); on a wallpaper the time itself is in the accent
+            // Time (on a brush stroke on paper; in the accent on a wallpaper)
             val tw = timeW(i)
             val tx = cx - tw / 2f
             if (boxed) {
                 val brush = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 150 }
-                val b = RectF(tx - th * 0.25f, timeTop - th * 0.12f, tx + tw + th * 0.25f, timeBottom + th * 0.16f)
+                val b = RectF(tx - th * 0.25f, y - th * 0.1f, tx + tw + th * 0.25f, y + th * 1.14f)
                 canvas.drawPath(brushPath(b, Random(i * 31 + 5)), brush)
             }
             val digits = if (boxed) S.INK else gold
-            val used = S.drawText(context, canvas, time, tx, timeBottom, th, digits, shadow)
-            if (ampm.isNotEmpty()) S.drawText(context, canvas, ampm, tx + used + th * 0.08f, timeBottom, th * 0.32f, digits, shadow)
+            val used = S.drawText(context, canvas, time, tx, y + th, th, digits, shadow)
+            if (ampm.isNotEmpty()) S.drawText(context, canvas, ampm, tx + used + th * 0.1f, y + th, th * 0.3f, digits, shadow)
+            y += th + gap
 
-            // The city drawing, fitted into its box
-            val box = RectF(cx - colW * 0.45f, artTop, cx + colW * 0.45f, artBottom)
+            // Sun by day, moon by night
+            val night = t.hour < 6 || t.hour >= 18
+            if (night) drawMoon(canvas, cx, y + sunD / 2f, sunD / 2f, gold, shadow)
+            else drawSun(canvas, cx, y + sunD / 2f, sunD / 2f, gold, stroke, shadow)
+            y += sunD + gap
+
+            // The drawing, as big as it fits, sitting on the same baseline in every column
+            val box = RectF(cx - colW * 0.47f, y, cx + colW * 0.47f, y + artH)
             val art = drawing(context, city.name, light = !boxed)
             if (art != null) {
                 val scale = minOf(box.width() / art.width, box.height() / art.height)
                 val dw = art.width * scale; val dh = art.height * scale
-                val dst = RectF(cx - dw / 2f, box.bottom - dh, cx + dw / 2f, box.bottom)
-                val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-                if (shadow) { // a soft shadow under the whole drawing
-                    p.setShadowLayer(stroke * 1.5f, 0f, stroke, S.SHADOW)
-                }
-                canvas.drawBitmap(art, null, dst, p)
+                canvas.drawBitmap(art, null, RectF(cx - dw / 2f, box.bottom - dh, cx + dw / 2f, box.bottom),
+                    Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
             } else {
                 drawGlobe(canvas, box, ink, gold, stroke)
             }
+            y += artH + gap * 1.1f
 
-            // Sun by day, moon by night, in the corner of the sky
-            val night = t.hour < 6 || t.hour >= 18
-            val sr = minOf(colW, box.height()) * 0.08f
-            val sx = box.right - sr * 1.2f; val sy = box.top + sr * 1.3f
-            if (night) drawMoon(canvas, sx, sy, sr, gold, shadow) else drawSun(canvas, sx, sy, sr, gold, stroke, shadow)
-
-            // Name, underlined
+            // NAME and UTC offset, clean and centred
             val name = label(city.name)
-            val nw = S.measure(context, name, nh)
-            S.drawText(context, canvas, name, cx - nw / 2f, nameBottom, nh, inkColor, shadow)
-            val u = Paint(ink).apply { color = gold; strokeWidth = stroke * 1.1f }
-            val uy = nameBottom + nh * 0.35f
-            canvas.drawPath(Path().apply {
-                moveTo(cx - nw * 0.38f, uy + nh * 0.05f); quadTo(cx, uy - nh * 0.08f, cx + nw * 0.4f, uy)
-            }, u)
-
-            // "UTC +5:30" — and "+1 day" in the label when it's already tomorrow there
+            canvas.drawText(name, cx - namePaint.measureText(name) / 2f, y + nameH * 0.82f, namePaint)
+            y += nameH + gap * 0.45f
             val off = zoneOffsetMinutes(city, now)
-            val sign = if (off < 0) "-" else "+"
-            val oText = (abs(off) / 60).toString() + if (abs(off) % 60 != 0) ":" + (abs(off) % 60).toString().padStart(2, '0') else ""
-            val pre = "UTC "
-            val preW = S.measure(context, pre, oh)
-            val signW = oh * 0.5f
-            val numW = S.measure(context, oText, oh)
-            val total = preW + signW + numW
-            var ox = cx - total / 2f
-            val muted = if (boxed) Color.argb(200, 60, 55, 48) else Color.argb(230, 255, 255, 255)
-            S.drawText(context, canvas, pre, ox, utcBottom, oh, muted, shadow); ox += preW
-            drawSign(canvas, sign, ox + signW * 0.45f, utcBottom - oh * 0.45f, oh * 0.24f, Paint(ink).apply { color = muted; strokeWidth = stroke * 0.9f })
-            ox += signW
-            S.drawText(context, canvas, oText, ox, utcBottom, oh, muted, shadow)
+            val utc = "UTC" + (if (off < 0) "−" else "+") + (abs(off) / 60) +
+                (if (abs(off) % 60 != 0) ":" + (abs(off) % 60).toString().padStart(2, '0') else "")
+            canvas.drawText(utc, cx - utcPaint.measureText(utc) / 2f, y + utcH * 0.82f, utcPaint)
         }
     }
 
@@ -241,10 +249,6 @@ object WorldSketchRenderer {
         c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; if (shadow) setShadowLayer(r * 0.2f, 0f, r * 0.1f, SketchRenderer.SHADOW) })
     }
 
-    private fun drawSign(c: Canvas, sign: String, x: Float, y: Float, s: Float, p: Paint) {
-        c.drawLine(x - s, y, x + s, y, p)
-        if (sign == "+") c.drawLine(x, y - s, x, y + s, p)
-    }
 
     /** For a city without a drawing: a small hand-drawn globe. */
     private fun drawGlobe(c: Canvas, box: RectF, ink: Paint, gold: Int, stroke: Float) {

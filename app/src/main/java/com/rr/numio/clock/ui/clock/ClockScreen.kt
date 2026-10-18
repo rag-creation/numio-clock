@@ -69,6 +69,7 @@ private var morphProgress = 1f; private var morphLastMs = 0L
 val cityPickerList = listOf(
     WorldCity("New York",       "UTC −4",    -4),
     WorldCity("Los Angeles",    "UTC −7",    -7),
+    WorldCity("San Francisco",  "UTC −7",    -7),
     WorldCity("Chicago",        "UTC −5",    -5),
     WorldCity("Toronto",        "UTC −4",    -4),
     WorldCity("São Paulo",      "UTC −3",    -3),
@@ -101,6 +102,7 @@ val cityPickerList = listOf(
 // Matched by city name, so cities that are already saved keep working.
 private val cityZones = mapOf(
     "New York" to "America/New_York",   "Los Angeles" to "America/Los_Angeles",
+    "San Francisco" to "America/Los_Angeles",
     "Chicago" to "America/Chicago",     "Toronto" to "America/Toronto",
     "São Paulo" to "America/Sao_Paulo", "London" to "Europe/London",
     "Paris" to "Europe/Paris",          "Berlin" to "Europe/Berlin",

@@ -23,11 +23,11 @@ import kotlin.random.Random
  */
 object SketchRenderer {
 
-    private const val PAPER = 0xFFFBF3E2.toInt()
-    private const val INK = 0xFF1C1A17.toInt()
-    private const val FIBER = 0x33A08A5C
-    private const val WHITE = 0xFFFFFFFF.toInt()
-    private const val SHADOW = 0x8C000000.toInt()
+    internal const val PAPER = 0xFFFBF3E2.toInt()
+    internal const val INK = 0xFF1C1A17.toInt()
+    internal const val FIBER = 0x33A08A5C
+    internal const val WHITE = 0xFFFFFFFF.toInt()
+    internal const val SHADOW = 0x8C000000.toInt()
 
     // Listed by id (not looked up by name) so resource shrinking keeps them.
     private val DIGITS = intArrayOf(
@@ -69,7 +69,7 @@ object SketchRenderer {
     private fun spaceW(h: Float) = h * 0.38f
     private fun colonW(h: Float) = h * 0.30f
 
-    private fun measure(context: Context, text: String, h: Float): Float {
+    internal fun measure(context: Context, text: String, h: Float): Float {
         var w = 0f
         text.forEachIndexed { i, c ->
             w += when (c) {
@@ -83,7 +83,7 @@ object SketchRenderer {
     }
 
     /** Draws [text] with its bottom edge on [bottom]. Returns the width used. */
-    private fun drawText(
+    internal fun drawText(
         context: Context, canvas: Canvas, text: String,
         x: Float, bottom: Float, h: Float, color: Int, shadow: Boolean = false
     ): Float {
@@ -238,7 +238,7 @@ object SketchRenderer {
     }
 
     /** Rounded rectangle drawn as a slightly shaky hand-drawn line. */
-    private fun wobblyRect(r: RectF, radius: Float, wobble: Float, rnd: Random): Path {
+    internal fun wobblyRect(r: RectF, radius: Float, wobble: Float, rnd: Random): Path {
         val src = Path().apply { addRoundRect(r, radius, radius, Path.Direction.CW) }
         val pm = android.graphics.PathMeasure(src, true)
         val len = pm.length
@@ -256,7 +256,7 @@ object SketchRenderer {
         return out
     }
 
-    private fun darken(c: Int, amount: Float): Int {
+    internal fun darken(c: Int, amount: Float): Int {
         val k = 1f - amount
         return Color.argb(
             255,

@@ -116,6 +116,30 @@
         </receiver>
 
         <receiver
+            android:name=".widget.ClockWidgetWorldSketch"
+            android:exported="false"
+            android:label="Clock by Numio · World Sketch">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_world_sketch_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClockWidgetWorldSketchClear"
+            android:exported="false"
+            android:label="Clock by Numio · World Sketch Clear">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_world_sketch_clear_info" />
+        </receiver>
+
+        <receiver
             android:name=".widget.ClockWidgetType"
             android:exported="false"
             android:label="Clock by Numio · Type">

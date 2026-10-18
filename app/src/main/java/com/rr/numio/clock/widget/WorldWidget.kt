@@ -40,7 +40,7 @@ object WorldWidget {
     }
 
     /** The cities to show: the chosen ones (in World clock order), or the first 3 if none are chosen. */
-    private fun citiesFor(context: Context): List<com.rr.numio.clock.data.WorldCity> {
+    internal fun citiesFor(context: Context): List<com.rr.numio.clock.data.WorldCity> {
         val all = runCatching { runBlocking { WorldCityStore.getCities(context).first() } }.getOrDefault(emptyList())
         val names = chosen(context)
         val picked = if (names == null) all.take(3) else all.filter { it.name in names }

@@ -96,6 +96,7 @@ val cityPickerList = listOf(
     WorldCity("Nairobi",        "UTC +3",     3),
     WorldCity("Kochi",          "UTC +5:30",  5),
     WorldCity("Pathanamthitta", "UTC +5:30",  5),
+    WorldCity("Amritsar",       "UTC +5:30",  5),
 )
 
 // Real time zones — handle half-hour offsets (India) and daylight saving automatically.
@@ -116,6 +117,7 @@ private val cityZones = mapOf(
     "Auckland" to "Pacific/Auckland",   "Johannesburg" to "Africa/Johannesburg",
     "Cairo" to "Africa/Cairo",          "Nairobi" to "Africa/Nairobi",
     "Kochi" to "Asia/Kolkata",          "Pathanamthitta" to "Asia/Kolkata",
+    "Amritsar" to "Asia/Kolkata",
 )
 
 fun cityTimeZone(city: WorldCity): java.util.TimeZone {

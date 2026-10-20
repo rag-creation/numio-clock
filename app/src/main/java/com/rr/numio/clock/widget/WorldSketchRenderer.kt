@@ -33,7 +33,8 @@ object WorldSketchRenderer {
         "kochi" to R.drawable.city_kochi, "paris" to R.drawable.city_paris, "saopaulo" to R.drawable.city_saopaulo,
         "riyadh" to R.drawable.city_riyadh, "toronto" to R.drawable.city_toronto, "berlin" to R.drawable.city_berlin,
         "moscow" to R.drawable.city_moscow, "istanbul" to R.drawable.city_istanbul, "karachi" to R.drawable.city_karachi,
-        "pathanamthitta" to R.drawable.city_pathanamthitta, "hongkong" to R.drawable.city_hongkong,
+        "pathanamthitta" to R.drawable.city_pathanamthitta, "amritsar" to R.drawable.city_amritsar,
+        "hongkong" to R.drawable.city_hongkong,
         "seoul" to R.drawable.city_seoul, "beijing" to R.drawable.city_beijing, "newyork" to R.drawable.city_newyork,
         "london" to R.drawable.city_london, "sydney" to R.drawable.city_sydney, "dubai" to R.drawable.city_dubai,
         "tokyo" to R.drawable.city_tokyo, "bangkok" to R.drawable.city_bangkok, "losangeles" to R.drawable.city_losangeles,
@@ -44,7 +45,10 @@ object WorldSketchRenderer {
     )
 
     /** Drawings that have their own version for wallpapers (light lines). */
-    private val LIGHT = mapOf("pathanamthitta" to R.drawable.city_pathanamthitta_light)
+    private val LIGHT = mapOf(
+        "pathanamthitta" to R.drawable.city_pathanamthitta_light,
+        "amritsar" to R.drawable.city_amritsar_light,
+    )
 
     private val cache = HashMap<String, Bitmap>()
 

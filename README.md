@@ -79,6 +79,13 @@ Licenses are in the [licenses](licenses/) folder:
 - [Joti One](https://fonts.google.com/specimen/Joti+One) by Eduardo Tunni (SIL OFL 1.1)
 - [Moirai One](https://fonts.google.com/specimen/Moirai+One) by Jiyeon Park (SIL OFL 1.1), Latin subset
 
+## 🎨 Icons
+
+Some of the app's small icons (moon, bell, bell off, settings, reset, play, flag) are based on
+[Feather](https://github.com/feathericons/feather) by Cole Bemis, MIT licence
+([licenses/MIT-Feather.txt](licenses/MIT-Feather.txt)). Each of those icon files says so at the top.
+The app icon, the Sketch digits and letters and the widget designs are RR's own.
+
 ## 📄 License
 
 GPL-3.0 — see [LICENSE](LICENSE)

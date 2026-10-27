@@ -9,6 +9,8 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.key
+import java.lang.ref.WeakReference
 import com.rr.numio.clock.data.AlarmReceiver
 import com.rr.numio.clock.data.AlarmScheduler
 import com.rr.numio.clock.data.AlarmService
@@ -21,10 +23,24 @@ class AlarmActivity : ComponentActivity() {
     companion object {
         // Survives activity recreation. true = this alarm was already snoozed/dismissed.
         @Volatile var handled = false
+
+        private var current: WeakReference<AlarmActivity>? = null
+
+        /** Closes the alarm screen, if it's showing (used by the notification's Snooze/Dismiss). */
+        fun closeIfOpen() {
+            handled = true
+            current?.get()?.let { activity ->
+                activity.runOnUiThread { if (!activity.isFinishing) activity.finish() }
+            }
+        }
     }
+
+    // Which ring this screen is showing (see AlarmService)
+    private var shownRingId = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        current = WeakReference(this)
 
         // Recreated after the user already dismissed/snoozed → close, don't start a new countdown
         if (savedInstanceState != null && handled) {
@@ -51,10 +67,19 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // The same ring arrives twice (full-screen notification + direct start):
+        // keep the screen as it is, so a hold in progress isn't cut off.
+        val ringId = intent.getLongExtra("ring_id", 0L)
+        if (ringId != 0L && ringId == shownRingId && !handled) return
         // A new alarm fired while this screen exists
         setIntent(intent)
         handled = false
         showAlarm()
+    }
+
+    override fun onDestroy() {
+        if (current?.get() === this) current = null
+        super.onDestroy()
     }
 
     private fun showAlarm() {
@@ -64,8 +89,13 @@ class AlarmActivity : ComponentActivity() {
         val alarmId    = intent?.getIntExtra("alarm_id", 0) ?: 0
         val alarmStyle = intent?.getStringExtra("alarm_style") ?: "hold"
         val snoozeMins = intent?.getIntExtra("snooze_minutes", 10) ?: 10
+        shownRingId = intent?.getLongExtra("ring_id", 0L) ?: 0L
+        val ringKey = shownRingId
 
         setContent {
+            // key(): every new ring gets a brand-new screen (fresh countdown, buttons and
+            // touch handling) instead of reusing the one left over from the last ring
+            key(ringKey) {
             ClockByNumioTheme {
                 if (alarmStyle == "chase") {
                     ChasetheMoonScreen(
@@ -102,6 +132,7 @@ class AlarmActivity : ComponentActivity() {
                         onDismiss = { onDismissed(alarmId) }
                     )
                 }
+            }
             }
         }
     }

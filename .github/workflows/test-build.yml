@@ -2,7 +2,7 @@ name: Test build
 
 on:
   push:
-    branches: [main, world-clock-widget]
+    branches: [main, world-clock-widget, "fix/**"]
   workflow_dispatch:
 
 permissions:

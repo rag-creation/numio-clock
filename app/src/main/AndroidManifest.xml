@@ -41,6 +41,10 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode|density|navigation"/>
 
         <receiver
+            android:name=".data.AlarmActionReceiver"
+            android:exported="false"/>
+
+        <receiver
             android:name=".data.AlarmReceiver"
             android:exported="true">
             <intent-filter>

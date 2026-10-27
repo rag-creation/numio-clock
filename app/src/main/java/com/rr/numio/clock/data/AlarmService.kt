@@ -14,10 +14,14 @@ import com.rr.numio.clock.AlarmActivity
 import com.rr.numio.clock.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class AlarmService : Service() {
+
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var rampJob: Job? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val alarmId    = intent?.getIntExtra("alarm_id", 0) ?: 0
@@ -54,18 +58,24 @@ class AlarmService : Service() {
 
         // Prevent system from silencing alarm on pickup
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-        val wakeLock = powerManager.newWakeLock(
+        // Held only while the alarm rings: released in onDestroy (snooze, dismiss or auto-snooze)
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = powerManager.newWakeLock(
             android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
                     android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
                     android.os.PowerManager.ON_AFTER_RELEASE,
             "numio:alarm_wakelock"
-        )
-        wakeLock.acquire(10 * 60 * 1000L)
+        ).apply { acquire(10 * 60 * 1000L) }
 
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
 
-        // FIX #2 — Start at 0 volume, fade in to max over 30 seconds
+        // Remember the phone's own alarm volume once, so it can be put back when the alarm stops
+        if (savedAlarmVolume == null) {
+            savedAlarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
+        }
+
+        // Start at 0 volume, fade in to max over 15 seconds
         audioManager.setStreamVolume(AudioManager.STREAM_ALARM, 0, 0)
 
         // Stop any existing ringtone before starting new one
@@ -79,7 +89,8 @@ class AlarmService : Service() {
         ringtone?.play()
 
         // Gradually ramp up volume over 30 seconds
-        CoroutineScope(Dispatchers.IO).launch {
+        rampJob?.cancel()
+        rampJob = CoroutineScope(Dispatchers.IO).launch {
             val steps = 15
             for (i in 1..steps) {
                 delay(1000)
@@ -94,6 +105,8 @@ class AlarmService : Service() {
 
         val firingIntent = Intent(this, AlarmActivity::class.java)
         firingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // One id per ring, so the alarm screen can tell a new ring from the same ring opened twice
+        firingIntent.putExtra("ring_id", System.currentTimeMillis())
         firingIntent.putExtra("alarm_hour", alarmHour)
         firingIntent.putExtra("alarm_minute", alarmMin)
         firingIntent.putExtra("alarm_label", alarmLabel)
@@ -117,6 +130,9 @@ class AlarmService : Service() {
             .setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
+            // Always-working way out, even if the alarm screen can't be used
+            .addAction(0, "Snooze", actionIntent(AlarmActionReceiver.ACTION_SNOOZE, alarmId, alarmHour, alarmMin, alarmLabel, snoozeMins))
+            .addAction(0, "Dismiss", actionIntent(AlarmActionReceiver.ACTION_DISMISS, alarmId, alarmHour, alarmMin, alarmLabel, snoozeMins))
             .build()
 
         startForeground(alarmId + 1000, notification)
@@ -126,7 +142,34 @@ class AlarmService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun actionIntent(
+        action: String, alarmId: Int, hour: Int, minute: Int, label: String, snoozeMins: Int
+    ): PendingIntent {
+        val intent = Intent(this, AlarmActionReceiver::class.java).apply {
+            this.action = action
+            putExtra("alarm_id", alarmId)
+            putExtra("alarm_hour", hour)
+            putExtra("alarm_minute", minute)
+            putExtra("alarm_label", label)
+            putExtra("snooze_minutes", snoozeMins)
+        }
+        val code = alarmId * 2 + if (action == AlarmActionReceiver.ACTION_SNOOZE) 0 else 1
+        return PendingIntent.getBroadcast(
+            this, code, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     override fun onDestroy() {
+        rampJob?.cancel()
+        rampJob = null
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
+        savedAlarmVolume?.let { vol ->
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, vol, 0)
+        }
+        savedAlarmVolume = null
         AlarmReceiver.stopAlarm()
         stopForeground(STOP_FOREGROUND_REMOVE)
         val manager = getSystemService(android.app.NotificationManager::class.java)
@@ -137,6 +180,9 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        // The phone's alarm volume before this alarm started ringing (null when not ringing)
+        @Volatile private var savedAlarmVolume: Int? = null
+
         fun stop(context: Context) {
             context.stopService(Intent(context, AlarmService::class.java))
         }

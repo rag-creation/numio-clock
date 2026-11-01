@@ -89,6 +89,16 @@ open class ClockWidget : AppWidgetProvider() {
                     manager.updateAppWidget(id, buildWorldSketchViews(context, manager.getAppWidgetOptions(id), boxed))
                 }
             }
+            // World Sticker: one city per tile, each tile with its own city and time colour
+            val stickerIds = manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSticker::class.java))
+            if (stickerIds.isNotEmpty()) {
+                val cities = WorldSticker.allCities(context)
+                stickerIds.forEach { id ->
+                    manager.updateAppWidget(id, WorldSticker.build(context, id, manager.getAppWidgetOptions(id), cities).apply {
+                        setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+                    })
+                }
+            }
             schedulePosterTick(context)
         }
 
@@ -160,7 +170,8 @@ open class ClockWidget : AppWidgetProvider() {
                 manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).isNotEmpty() ||
                 manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldClear::class.java)).isNotEmpty() ||
                 manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSketch::class.java)).isNotEmpty() ||
-                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSketchClear::class.java)).isNotEmpty()
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSketchClear::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSticker::class.java)).isNotEmpty()
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!hasPoster) {
                 alarmManager.cancel(tickIntent(context))

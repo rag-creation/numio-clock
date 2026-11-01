@@ -212,7 +212,7 @@ private fun SetupScreen(
 
         Spacer(Modifier.height(12.dp))
         Button(
-            onClick = { city?.let { onSave(it, color) } },
+            onClick = { city?.let { onSave(it, color, font) } },
             enabled = city != null,
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color(0xFF1A1400)),
             modifier = Modifier.fillMaxWidth().height(52.dp)

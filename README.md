@@ -63,7 +63,7 @@ F-Droid version coming soon.
 
 ## 🔤 Fonts
 
-The poster and type clock widgets use these fonts, bundled in the app (no internet, no tracking).
+The poster, type clock and World Sticker widgets use these fonts, bundled in the app (no internet, no tracking).
 Licenses are in the [licenses](licenses/) folder:
 
 - [Permanent Marker](https://fonts.google.com/specimen/Permanent+Marker) by Font Diner (Apache License 2.0)
@@ -72,6 +72,7 @@ Licenses are in the [licenses](licenses/) folder:
 - [Fraunces](https://fonts.google.com/specimen/Fraunces) by Undercase Type (SIL OFL 1.1), Bold, Latin subset
 - [Cormorant Garamond](https://fonts.google.com/specimen/Cormorant+Garamond) by Christian Thalmann (SIL OFL 1.1), Bold, Latin subset
 - [DM Serif Display](https://fonts.google.com/specimen/DM+Serif+Display) by Colophon Foundry (SIL OFL 1.1), Latin subset
+- [Outfit](https://fonts.google.com/specimen/Outfit) by the Outfit Project Authors (SIL OFL 1.1), Medium
 - [Anton](https://fonts.google.com/specimen/Anton) by Vernon Adams (SIL OFL 1.1), Latin subset
 - [Rubik Mono One](https://fonts.google.com/specimen/Rubik+Mono+One) by Hubert and Fischer (SIL OFL 1.1), Latin subset
 - [Bungee](https://fonts.google.com/specimen/Bungee) by David Jonathan Ross (SIL OFL 1.1), Latin subset

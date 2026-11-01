@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +71,7 @@ class WorldStickerSetupActivity : ComponentActivity() {
         val startCity = WorldSticker.cityName(this, id)?.takeIf { n -> cities.any { it.name == n } }
             ?: cities.firstOrNull()?.name
         val startColor = WorldSticker.color(this, id)
+        val startFont = WorldSticker.font(this, id)
 
         enableEdgeToEdge()
         setContent {
@@ -76,8 +80,9 @@ class WorldStickerSetupActivity : ComponentActivity() {
                     cities = cities.map { it.name },
                     startCity = startCity,
                     startColor = startColor,
-                    onSave = { city, color ->
-                        WorldSticker.save(this, id, city, color)
+                    startFont = startFont,
+                    onSave = { city, color, font ->
+                        WorldSticker.save(this, id, city, color, font)
                         ClockWidget.updateAll(this)
                         ClockWidget.schedulePosterTick(this)
                         setResult(Activity.RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id))
@@ -94,19 +99,21 @@ private fun SetupScreen(
     cities: List<String>,
     startCity: String?,
     startColor: String,
-    onSave: (String, String) -> Unit,
+    startFont: String,
+    onSave: (String, String, String) -> Unit,
 ) {
     val context = LocalContext.current
     val accent = Color(PosterStyles.accent(context))
     var city by remember { mutableStateOf(startCity) }
     var color by remember { mutableStateOf(startColor) }
+    var font by remember { mutableStateOf(startFont) }
     val all = remember { WorldSticker.allCities(context) }
 
     // Live preview of the tile
-    val preview: Bitmap = remember(city, color) {
+    val preview: Bitmap = remember(city, color, font) {
         val bmp = Bitmap.createBitmap(420, 480, Bitmap.Config.ARGB_8888)
         WorldStickerRenderer.draw(context, android.graphics.Canvas(bmp), bmp.width, bmp.height,
-            all.firstOrNull { it.name == city }, color)
+            all.firstOrNull { it.name == city }, color, font)
         bmp
     }
 
@@ -157,6 +164,27 @@ private fun SetupScreen(
             }
         }
 
+        Spacer(Modifier.height(10.dp))
+        Text("Font", fontSize = 15.sp, color = NumioTextPrimary)
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(WorldStickerRenderer.FONTS) { (key, label) ->
+                val on = key == font
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (on) accent.copy(alpha = 0.15f) else NumioBgCard)
+                        .border(if (on) 2.dp else 1.dp, if (on) accent else NumioTextMuted.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .clickable { font = key }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(label, fontSize = 16.sp, fontFamily = fontFamily(key),
+                        color = if (on) accent else NumioTextPrimary)
+                }
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
         Text("City", fontSize = 15.sp, color = NumioTextPrimary)
         Text("Your World clock cities. Add more in the Clock tab.", fontSize = 12.sp, color = NumioTextMuted)
@@ -193,4 +221,16 @@ private fun SetupScreen(
         }
         Spacer(Modifier.height(16.dp))
     }
+}
+
+/** Each font chip is written in its own font. */
+private fun fontFamily(key: String): FontFamily = when (key) {
+    "cormorant" -> FontFamily(Font(com.rr.numio.clock.R.font.cormorant_bold))
+    "dmserif" -> FontFamily(Font(com.rr.numio.clock.R.font.dmserif_display))
+    "outfit" -> FontFamily(Font(com.rr.numio.clock.R.font.outfit_medium))
+    "anton" -> FontFamily(Font(com.rr.numio.clock.R.font.anton))
+    "bungee" -> FontFamily(Font(com.rr.numio.clock.R.font.bungee))
+    "rubikmono" -> FontFamily(Font(com.rr.numio.clock.R.font.rubik_mono_one))
+    WorldStickerRenderer.FONT_SKETCH -> FontFamily(Font(com.rr.numio.clock.R.font.permanent_marker))
+    else -> FontFamily(Font(com.rr.numio.clock.R.font.fraunces_bold))
 }

@@ -25,6 +25,7 @@ object WorldSticker {
     private const val PREFS = "numio_prefs"
     private fun cityKey(id: Int) = "world_sticker_city_$id"
     private fun colorKey(id: Int) = "world_sticker_color_$id"
+    private fun fontKey(id: Int) = "world_sticker_font_$id"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -43,12 +44,16 @@ object WorldSticker {
     fun color(context: Context, id: Int): String =
         prefs(context).getString(colorKey(id), null) ?: WorldStickerRenderer.COLOR_CREAM
 
-    fun save(context: Context, id: Int, city: String, color: String) {
-        prefs(context).edit().putString(cityKey(id), city).putString(colorKey(id), color).apply()
+    fun font(context: Context, id: Int): String =
+        prefs(context).getString(fontKey(id), null) ?: WorldStickerRenderer.FONT_FRAUNCES
+
+    fun save(context: Context, id: Int, city: String, color: String, font: String) {
+        prefs(context).edit().putString(cityKey(id), city).putString(colorKey(id), color)
+            .putString(fontKey(id), font).apply()
     }
 
     fun forget(context: Context, id: Int) {
-        prefs(context).edit().remove(cityKey(id)).remove(colorKey(id)).apply()
+        prefs(context).edit().remove(cityKey(id)).remove(colorKey(id)).remove(fontKey(id)).apply()
     }
 
     /** Draw the tile as a picture; it's redrawn every minute with the poster tick. */
@@ -62,7 +67,7 @@ object WorldSticker {
         val hPx = (hDp * density * scaleDown).toInt().coerceAtLeast(1)
         val bmp = android.graphics.Bitmap.createBitmap(wPx, hPx, android.graphics.Bitmap.Config.ARGB_8888)
         val city = city(context, id, all)
-        WorldStickerRenderer.draw(context, android.graphics.Canvas(bmp), wPx, hPx, city, color(context, id))
+        WorldStickerRenderer.draw(context, android.graphics.Canvas(bmp), wPx, hPx, city, color(context, id), font(context, id))
         views.setImageViewBitmap(R.id.poster_image, bmp)
         views.setContentDescription(R.id.poster_image, "World clock: " + (city?.name ?: "no city"))
         return views

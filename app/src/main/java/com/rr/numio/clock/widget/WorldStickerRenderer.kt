@@ -37,6 +37,33 @@ object WorldStickerRenderer {
     private const val EDGE = 0xFFFFFDF7.toInt()
     private const val LABEL_TEXT = 0xFF1B2430.toInt()
 
+    /** Time fonts you can pick per widget: key → name shown in the setup screen. */
+    const val FONT_FRAUNCES = "fraunces"
+    const val FONT_SKETCH = "sketch"
+    val FONTS = listOf(
+        FONT_FRAUNCES to "Fraunces",
+        "cormorant" to "Cormorant",
+        "dmserif" to "DM Serif",
+        "outfit" to "Outfit",
+        "anton" to "Anton",
+        "bungee" to "Bungee",
+        "rubikmono" to "Rubik Mono",
+        FONT_SKETCH to "Handwriting",
+    )
+
+    private fun typeface(context: Context, key: String): Typeface {
+        val id = when (key) {
+            "cormorant" -> R.font.cormorant_bold
+            "dmserif" -> R.font.dmserif_display
+            "outfit" -> R.font.outfit_medium
+            "anton" -> R.font.anton
+            "bungee" -> R.font.bungee
+            "rubikmono" -> R.font.rubik_mono_one
+            else -> R.font.fraunces_bold
+        }
+        return runCatching { ResourcesCompat.getFont(context, id) }.getOrNull() ?: Typeface.SERIF
+    }
+
     fun timeColor(context: Context, key: String): Int = when (key) {
         COLOR_GOLD -> PosterStyles.accent(context)
         COLOR_WHITE -> Color.WHITE
@@ -49,7 +76,7 @@ object WorldStickerRenderer {
     private fun label(name: String) =
         Normalizer.normalize(name, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").uppercase()
 
-    fun draw(context: Context, canvas: Canvas, w: Int, h: Int, city: WorldCity?, colorKey: String) {
+    fun draw(context: Context, canvas: Canvas, w: Int, h: Int, city: WorldCity?, colorKey: String, fontKey: String = FONT_FRAUNCES) {
         val shadow = SketchRenderer.SHADOW
         if (city == null) {
             val p = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -77,7 +104,7 @@ object WorldStickerRenderer {
         val pad = u * 0.04f
 
         val timePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = runCatching { ResourcesCompat.getFont(context, R.font.fraunces_bold) }.getOrNull() ?: Typeface.SERIF
+            typeface = typeface(context, fontKey)
             color = timeColor
             textSize = u * 0.27f
             setShadowLayer(textSize * 0.12f, 0f, textSize * 0.05f, shadow)
@@ -89,7 +116,11 @@ object WorldStickerRenderer {
             textSize = u * 0.075f
             setShadowLayer(textSize * 0.3f, 0f, textSize * 0.1f, shadow)
         }
-        fun timeWidth() = timePaint.measureText(time) +
+        // Handwriting uses RR's hand-drawn digits (the Sketch poster's), sized by digit height
+        val sketch = fontKey == FONT_SKETCH
+        fun digitsH() = timePaint.textSize * 0.78f
+        fun digitsW() = if (sketch) SketchRenderer.measure(context, time, digitsH()) else timePaint.measureText(time)
+        fun timeWidth() = digitsW() +
             if (ampm.isEmpty()) 0f else u * 0.02f + ampmPaint.measureText(ampm)
         while (timeWidth() > w * 0.92f && timePaint.textSize > 8f) {
             timePaint.textSize *= 0.95f; ampmPaint.textSize *= 0.95f
@@ -112,7 +143,7 @@ object WorldStickerRenderer {
             setShadowLayer(textSize * 0.3f, 0f, textSize * 0.1f, shadow)
         }
 
-        val timeH = timePaint.textSize * 0.78f          // cap height of the digits
+        val timeH = digitsH()          // height of the digits
         val sunD = u * 0.09f
         val gap = u * 0.035f
         val pillH = labelPaint.textSize * 1.9f
@@ -136,8 +167,9 @@ object WorldStickerRenderer {
         // Time
         val tw = timeWidth()
         val tx = cx - tw / 2f
-        canvas.drawText(time, tx, y + timeH, timePaint)
-        if (ampm.isNotEmpty()) canvas.drawText(ampm, tx + timePaint.measureText(time) + u * 0.02f, y + timeH, ampmPaint)
+        if (sketch) SketchRenderer.drawText(context, canvas, time, tx, y + timeH, timeH, timeColor, true)
+        else canvas.drawText(time, tx, y + timeH, timePaint)
+        if (ampm.isNotEmpty()) canvas.drawText(ampm, tx + digitsW() + u * 0.02f, y + timeH, ampmPaint)
         y += timeH + gap
 
         // Sun by day, moon by night

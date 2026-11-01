@@ -14,12 +14,13 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.math.min
 
-/** Type clock settings: layout, font, second colour, outline. Saved for the 2×2 widget. */
+/** Type clock settings: layout, font, first and second colour, outline. Saved for the 2×2 widget. */
 object TypeClock {
     private const val PREFS = "numio_prefs"
     private const val KEY_LAYOUT = "type_layout"
     private const val KEY_FONT = "type_font"
     private const val KEY_SECOND = "type_second"
+    private const val KEY_FIRST = "type_first"
     private const val KEY_OUTLINE = "type_outline"
     private const val KEY_CARD = "type_card"
 
@@ -34,6 +35,14 @@ object TypeClock {
         Triple("tall", "Tall", R.font.anton),
         Triple("mono", "Mono", R.font.rubik_mono_one),
         Triple("block", "Block", R.font.bungee)
+    )
+
+    /** First colour presets; the app's accent colour is offered too and is the default. */
+    val firstColours = listOf(
+        0xFFFFC21A.toInt(), // Numio amber
+        0xFFFF8A65.toInt(), // coral
+        0xFFFFFFFF.toInt(), // white
+        0xFF6FD3D6.toInt(), // teal
     )
 
     val secondColours = listOf(
@@ -51,12 +60,19 @@ object TypeClock {
     fun font(c: Context) = prefs(c).getString(KEY_FONT, "joti")
         ?.takeIf { k -> fonts.any { it.first == k } } ?: "joti"
     fun second(c: Context) = prefs(c).getInt(KEY_SECOND, secondColours[0])
+    /** The first colour, or null when it follows the app's accent colour. */
+    fun firstOrAccent(c: Context): Int? = if (prefs(c).contains(KEY_FIRST)) prefs(c).getInt(KEY_FIRST, 0) else null
+    fun first(c: Context) = firstOrAccent(c) ?: PosterStyles.accent(c)
     fun outline(c: Context) = prefs(c).getBoolean(KEY_OUTLINE, false)
     /** Dark card behind the clock; off = transparent, straight on the wallpaper. */
     fun card(c: Context) = prefs(c).getBoolean(KEY_CARD, true)
 
     fun saveLayout(c: Context, v: String) { prefs(c).edit().putString(KEY_LAYOUT, v).apply(); ClockWidget.updateAll(c) }
     fun saveFont(c: Context, v: String) { prefs(c).edit().putString(KEY_FONT, v).apply(); ClockWidget.updateAll(c) }
+    /** null = follow the accent colour again */
+    fun saveFirst(c: Context, v: Int?) {
+        prefs(c).edit().apply { if (v == null) remove(KEY_FIRST) else putInt(KEY_FIRST, v) }.apply(); ClockWidget.updateAll(c)
+    }
     fun saveSecond(c: Context, v: Int) { prefs(c).edit().putInt(KEY_SECOND, v).apply(); ClockWidget.updateAll(c) }
     fun saveOutline(c: Context, v: Boolean) { prefs(c).edit().putBoolean(KEY_OUTLINE, v).apply(); ClockWidget.updateAll(c) }
     fun saveCard(c: Context, v: Boolean) { prefs(c).edit().putBoolean(KEY_CARD, v).apply(); ClockWidget.updateAll(c) }
@@ -96,7 +112,7 @@ object TypeClockRenderer {
             canvas.drawRoundRect(RectF(2f, 2f, 298f, 298f), 34f, 34f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CARD })
         }
 
-        val a = PosterStyles.accent(context)
+        val a = TypeClock.first(context)
         val b = TypeClock.second(context)
         val outline = TypeClock.outline(context)
         val font = font(context, TypeClock.fontRes(fontKey))

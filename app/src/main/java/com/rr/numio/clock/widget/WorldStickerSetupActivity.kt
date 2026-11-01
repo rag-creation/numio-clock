@@ -144,25 +144,13 @@ private fun SetupScreen(
         Spacer(Modifier.height(16.dp))
         Text("Time colour", fontSize = 15.sp, color = NumioTextPrimary)
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            WorldStickerRenderer.COLORS.forEach { key ->
-                val swatch = Color(WorldStickerRenderer.timeColor(context, key))
-                val on = key == color
-                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { color = key }.padding(6.dp)) {
-                    Box(
-                        Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(swatch)
-                            .border(if (on) 3.dp else 1.dp, if (on) accent else NumioTextMuted, CircleShape)
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(key.replaceFirstChar { it.uppercase() }, fontSize = 12.sp,
-                        color = if (on) accent else NumioTextMuted)
-                }
-            }
-        }
+        com.rr.numio.clock.ui.settings.ColourRow(
+            presets = WorldStickerRenderer.COLORS.map { WorldStickerRenderer.timeColor(context, it) },
+            labels = WorldStickerRenderer.COLORS.map { it.replaceFirstChar { c -> c.uppercase() } },
+            selected = WorldStickerRenderer.timeColor(context, color),
+            accent = accent,
+            onPick = { color = WorldStickerRenderer.colorKey(context, it) },
+        )
 
         Spacer(Modifier.height(10.dp))
         Text("Font", fontSize = 15.sp, color = NumioTextPrimary)

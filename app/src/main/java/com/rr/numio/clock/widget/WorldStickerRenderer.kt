@@ -64,11 +64,17 @@ object WorldStickerRenderer {
         return runCatching { ResourcesCompat.getFont(context, id) }.getOrNull() ?: Typeface.SERIF
     }
 
+    /** A preset key, or a custom colour saved as "#RRGGBB". */
     fun timeColor(context: Context, key: String): Int = when (key) {
         COLOR_GOLD -> PosterStyles.accent(context)
         COLOR_WHITE -> Color.WHITE
-        else -> CREAM
+        COLOR_CREAM -> CREAM
+        else -> runCatching { Color.parseColor(key) }.getOrDefault(CREAM)
     }
+
+    /** The key to save for a picked colour: a preset's name, or "#RRGGBB" for anything else. */
+    fun colorKey(context: Context, color: Int): String =
+        COLORS.firstOrNull { timeColor(context, it) == color } ?: "#%06X".format(color and 0xFFFFFF)
 
     private val stickers = HashMap<String, Bitmap>()
 

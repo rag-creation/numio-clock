@@ -59,6 +59,8 @@ object WorldCityStore {
         context.dataStore.edit { prefs ->
             prefs[CITIES_KEY] = Json.encodeToString(cities.map { it.toSerializable() })
         }
+        // The world clock widget shows these cities, so redraw it.
+        com.rr.numio.clock.widget.ClockWidget.updateAll(context)
     }
 
     // Alarm style

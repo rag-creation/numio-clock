@@ -34,8 +34,11 @@
 - ✅ Timer and stopwatch
 - ✅ **Home screen widgets**
   - Card and Clear widgets with 6 font styles, resizable
-  - **Poster widget** in nine styles: Marker, Bold, Sketch, Sketch Clear, Bubble, Bubble Clear, Sadhya (a Kerala sadhya on a banana leaf) and Bloom (a hand-drawn bouquet)
-  - **Type clock** (2×2): big two-colour digits with the date, 3 layouts, 7 fonts, outline option
+  - **Poster widget** in nine styles: Marker, Bold, Sketch, Sketch Clear, Bubble, Bubble Clear, Sadhya (a Kerala sadhya on a banana leaf), Bloom and Bloom Clear (a hand-drawn bouquet)
+  - **Type clock** (2×2): big two-colour digits with the date, 3 layouts, 7 fonts, outline option, pick both colours
+  - **World clock** widgets (Card and Clear): up to 4 of your world clock cities with live times
+  - **World Sketch** (Card and Clear): your cities side by side with hand-drawn city drawings
+  - **World Sticker** (2×2): one city per tile as a die-cut sticker, with its own font and colour, so two tiles show two cities
   - Sketch styles use hand-drawn letters and digits by RR
   - Widgets follow your accent colour
 - ✅ Theme customization — preset accent colors + custom hex input
@@ -63,7 +66,7 @@ F-Droid version coming soon.
 
 ## 🔤 Fonts
 
-The poster and type clock widgets use these fonts, bundled in the app (no internet, no tracking).
+The poster, type clock and World Sticker widgets use these fonts, bundled in the app (no internet, no tracking).
 Licenses are in the [licenses](licenses/) folder:
 
 - [Permanent Marker](https://fonts.google.com/specimen/Permanent+Marker) by Font Diner (Apache License 2.0)
@@ -72,6 +75,7 @@ Licenses are in the [licenses](licenses/) folder:
 - [Fraunces](https://fonts.google.com/specimen/Fraunces) by Undercase Type (SIL OFL 1.1), Bold, Latin subset
 - [Cormorant Garamond](https://fonts.google.com/specimen/Cormorant+Garamond) by Christian Thalmann (SIL OFL 1.1), Bold, Latin subset
 - [DM Serif Display](https://fonts.google.com/specimen/DM+Serif+Display) by Colophon Foundry (SIL OFL 1.1), Latin subset
+- [Outfit](https://fonts.google.com/specimen/Outfit) by the Outfit Project Authors (SIL OFL 1.1), Medium
 - [Anton](https://fonts.google.com/specimen/Anton) by Vernon Adams (SIL OFL 1.1), Latin subset
 - [Rubik Mono One](https://fonts.google.com/specimen/Rubik+Mono+One) by Hubert and Fischer (SIL OFL 1.1), Latin subset
 - [Bungee](https://fonts.google.com/specimen/Bungee) by David Jonathan Ross (SIL OFL 1.1), Latin subset

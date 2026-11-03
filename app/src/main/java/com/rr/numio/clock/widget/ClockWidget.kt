@@ -75,7 +75,48 @@ open class ClockWidget : AppWidgetProvider() {
             manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).forEach { id ->
                 manager.updateAppWidget(id, buildTypeViews(context, manager.getAppWidgetOptions(id)))
             }
+            // World clock: live times per city; notes and sun/moon refresh with the minute tick
+            for ((cls, clear) in listOf(ClockWidgetWorld::class.java to false, ClockWidgetWorldClear::class.java to true)) {
+                manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
+                    manager.updateAppWidget(id, WorldWidget.build(context, clear, manager.getAppWidgetOptions(id)).apply {
+                        setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+                    })
+                }
+            }
+            // World Sketch: a picture, redrawn every minute like the poster
+            for ((cls, boxed) in listOf(ClockWidgetWorldSketch::class.java to true, ClockWidgetWorldSketchClear::class.java to false)) {
+                manager.getAppWidgetIds(ComponentName(context, cls)).forEach { id ->
+                    manager.updateAppWidget(id, buildWorldSketchViews(context, manager.getAppWidgetOptions(id), boxed))
+                }
+            }
+            // World Sticker: one city per tile, each tile with its own city and time colour
+            val stickerIds = manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSticker::class.java))
+            if (stickerIds.isNotEmpty()) {
+                val cities = WorldSticker.allCities(context)
+                stickerIds.forEach { id ->
+                    manager.updateAppWidget(id, WorldSticker.build(context, id, manager.getAppWidgetOptions(id), cities).apply {
+                        setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+                    })
+                }
+            }
             schedulePosterTick(context)
+        }
+
+        private fun buildWorldSketchViews(context: Context, options: Bundle, boxed: Boolean): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_poster)
+            val density = context.resources.displayMetrics.density
+            val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).takeIf { it > 0 } ?: 300
+            val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 160).takeIf { it > 0 } ?: 160
+            val scaleDown = minOf(1f, 1200f / (wDp * density), 700f / (hDp * density))
+            val wPx = (wDp * density * scaleDown).toInt()
+            val hPx = (hDp * density * scaleDown).toInt()
+            val bmp = android.graphics.Bitmap.createBitmap(wPx, hPx, android.graphics.Bitmap.Config.ARGB_8888)
+            val cities = WorldWidget.citiesFor(context)
+            WorldSketchRenderer.draw(context, android.graphics.Canvas(bmp), wPx, hPx, PosterStyles.accent(context), cities, boxed)
+            views.setImageViewBitmap(R.id.poster_image, bmp)
+            views.setContentDescription(R.id.poster_image, "World clock: " + cities.joinToString(", ") { it.name })
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+            return views
         }
 
         private fun buildPosterViews(context: Context, options: Bundle): RemoteViews {
@@ -125,7 +166,12 @@ open class ClockWidget : AppWidgetProvider() {
         fun schedulePosterTick(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val hasPoster = manager.getAppWidgetIds(ComponentName(context, ClockWidgetPoster::class.java)).isNotEmpty() ||
-                manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty()
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetType::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorld::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldClear::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSketch::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSketchClear::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, ClockWidgetWorldSticker::class.java)).isNotEmpty()
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!hasPoster) {
                 alarmManager.cancel(tickIntent(context))
@@ -202,6 +248,18 @@ class ClockWidgetPoster : ClockWidget()
 /** Type clock — 2×2 two-colour digits with the date. */
 class ClockWidgetType : ClockWidget()
 
+/** World clock — your world clock cities with their live times. */
+class ClockWidgetWorld : ClockWidget()
+
+/** World clock without the card, for any wallpaper. */
+class ClockWidgetWorldClear : ClockWidget()
+
+/** World Sketch — your cities side by side with hand-drawn city drawings, on cream paper. */
+class ClockWidgetWorldSketch : ClockWidget()
+
+/** World Sketch Clear — the same, straight on the wallpaper. */
+class ClockWidgetWorldSketchClear : ClockWidget()
+
 /**
  * Widget fonts. Widgets can't change fonts from code, so each font has its own
  * layout file (generated from widget_clock.xml / widget_clock_clear.xml).
@@ -238,6 +296,16 @@ object WidgetFonts {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, key).apply()
         ClockWidget.updateAll(context)
+    }
+
+    /** (card layout, clear layout) of the World widget for a font key */
+    fun worldLayouts(key: String): Pair<Int, Int> = when (key) {
+        "thin" -> R.layout.widget_world_thin to R.layout.widget_world_clear_thin
+        "bold" -> R.layout.widget_world_bold to R.layout.widget_world_clear_bold
+        "condensed" -> R.layout.widget_world_condensed to R.layout.widget_world_clear_condensed
+        "mono" -> R.layout.widget_world_mono to R.layout.widget_world_clear_mono
+        "serif" -> R.layout.widget_world_serif to R.layout.widget_world_clear_serif
+        else -> R.layout.widget_world to R.layout.widget_world_clear
     }
 
     /** (card layout, clear layout) for a font key */

@@ -12,12 +12,17 @@ android {
         applicationId = "com.rr.numio.clock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.3.1"
+        versionCode = 7
+        versionName = "1.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        // Test builds (Android Studio Run, GitHub) install as a separate "Clock Test" app,
+        // so the real Clock and its alarms are never touched.
+        debug {
+            applicationIdSuffix = ".test"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

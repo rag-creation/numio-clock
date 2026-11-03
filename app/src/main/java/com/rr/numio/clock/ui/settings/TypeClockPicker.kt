@@ -30,7 +30,7 @@ import com.rr.numio.clock.widget.TypeClockRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Settings for the 2×2 Type clock: layout, font, second colour and outline. */
+/** Settings for the 2×2 Type clock: layout, font, first and second colour and outline. */
 @Composable
 fun TypeClockPicker() {
     val context = LocalContext.current
@@ -38,10 +38,11 @@ fun TypeClockPicker() {
     var layout by remember { mutableStateOf(TypeClock.layout(context)) }
     var font by remember { mutableStateOf(TypeClock.font(context)) }
     var second by remember { mutableStateOf(TypeClock.second(context)) }
+    var first by remember { mutableStateOf(TypeClock.firstOrAccent(context)) }
     var outline by remember { mutableStateOf(TypeClock.outline(context)) }
     var card by remember { mutableStateOf(TypeClock.card(context)) }
     // Anything that changes the drawing; previews redraw when it changes
-    val look = listOf(font, second, outline, card, accent.value.toLong())
+    val look = listOf(font, second, first, outline, card, accent.value.toLong())
 
     Column {
         // Layout cards, each a live preview in the chosen font
@@ -112,22 +113,40 @@ fun TypeClockPicker() {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Second colour", fontSize = 13.sp, color = NumioTextSecondary)
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TypeClock.secondColours.forEach { c ->
-                val isSelected = c == second
+        Text("First colour", fontSize = 13.sp, color = NumioTextSecondary)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // "Accent": follows the app's accent colour (the default)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .then(if (isSelected) Modifier.border(2.dp, accent, CircleShape) else Modifier)
-                        .padding(4.dp)
+                        .size(40.dp)
+                        .then(if (first == null) Modifier.border(2.5.dp, accent, CircleShape) else Modifier)
+                        .padding(5.dp)
                         .clip(CircleShape)
-                        .background(Color(c))
-                        .clickable { second = c; TypeClock.saveSecond(context, c) }
+                        .background(accent)
+                        .clickable { first = null; TypeClock.saveFirst(context, null) }
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Accent", fontSize = 12.sp, color = if (first == null) accent else NumioTextMuted)
             }
+            ColourRow(
+                presets = TypeClock.firstColours,
+                selected = first,
+                accent = accent,
+                onPick = { first = it; TypeClock.saveFirst(context, it) },
+            )
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("Second colour", fontSize = 13.sp, color = NumioTextSecondary)
+        Spacer(modifier = Modifier.height(8.dp))
+        ColourRow(
+            presets = TypeClock.secondColours,
+            selected = second,
+            accent = accent,
+            onPick = { second = it; TypeClock.saveSecond(context, it) },
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
         Row(

@@ -62,7 +62,7 @@ object WorldSketchRenderer {
             .filter { it in 'A'..'Z' || it in '0'..'9' || it == ' ' }
 
     /** The city drawing; for the clear style the dark ink lines are turned light so they show on a dark wallpaper. */
-    private fun drawing(context: Context, city: String, light: Boolean): Bitmap? {
+    internal fun drawing(context: Context, city: String, light: Boolean): Bitmap? {
         val k = key(city)
         val own = if (light) LIGHT[k] else null
         val id = own ?: DRAWINGS[k] ?: return null
@@ -242,7 +242,7 @@ object WorldSketchRenderer {
         return p
     }
 
-    private fun drawSun(c: Canvas, x: Float, y: Float, r: Float, color: Int, stroke: Float, shadow: Boolean) {
+    internal fun drawSun(c: Canvas, x: Float, y: Float, r: Float, color: Int, stroke: Float, shadow: Boolean) {
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; if (shadow) setShadowLayer(stroke, 0f, stroke * 0.5f, SketchRenderer.SHADOW) }
         c.drawCircle(x, y, r * 0.55f, fill)
         val ray = Paint(fill).apply { style = Paint.Style.STROKE; strokeWidth = stroke * 0.9f; strokeCap = Paint.Cap.ROUND }
@@ -253,7 +253,7 @@ object WorldSketchRenderer {
         }
     }
 
-    private fun drawMoon(c: Canvas, x: Float, y: Float, r: Float, color: Int, shadow: Boolean) {
+    internal fun drawMoon(c: Canvas, x: Float, y: Float, r: Float, color: Int, shadow: Boolean) {
         val p = Path().apply {
             addCircle(x, y, r * 0.75f, Path.Direction.CW)
             val cut = Path().apply { addCircle(x + r * 0.38f, y - r * 0.28f, r * 0.62f, Path.Direction.CW) }

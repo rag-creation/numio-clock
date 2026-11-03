@@ -144,6 +144,28 @@
         </receiver>
 
         <receiver
+            android:name=".widget.ClockWidgetWorldSticker"
+            android:exported="false"
+            android:label="Clock by Numio · World Sticker">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_world_sticker_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.WorldStickerSetupActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="World Sticker">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
             android:name=".widget.ClockWidgetType"
             android:exported="false"
             android:label="Clock by Numio · Type">

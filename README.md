@@ -34,8 +34,11 @@
 - ✅ Timer and stopwatch
 - ✅ **Home screen widgets**
   - Card and Clear widgets with 6 font styles, resizable
-  - **Poster widget** in nine styles: Marker, Bold, Sketch, Sketch Clear, Bubble, Bubble Clear, Sadhya (a Kerala sadhya on a banana leaf) and Bloom (a hand-drawn bouquet)
-  - **Type clock** (2×2): big two-colour digits with the date, 3 layouts, 7 fonts, outline option
+  - **Poster widget** in nine styles: Marker, Bold, Sketch, Sketch Clear, Bubble, Bubble Clear, Sadhya (a Kerala sadhya on a banana leaf), Bloom and Bloom Clear (a hand-drawn bouquet)
+  - **Type clock** (2×2): big two-colour digits with the date, 3 layouts, 7 fonts, outline option, pick both colours
+  - **World clock** widgets (Card and Clear): up to 4 of your world clock cities with live times
+  - **World Sketch** (Card and Clear): your cities side by side with hand-drawn city drawings
+  - **World Sticker** (2×2): one city per tile as a die-cut sticker, with its own font and colour, so two tiles show two cities
   - Sketch styles use hand-drawn letters and digits by RR
   - Widgets follow your accent colour
 - ✅ Theme customization — preset accent colors + custom hex input

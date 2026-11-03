@@ -405,7 +405,11 @@ fun SettingsScreen() {
             SettingsCard {
                 SettingsRow(
                     label = "Version",
-                    value = "1.2.0",
+                    // The installed version, so it never goes out of date
+                    value = remember {
+                        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+                            .getOrNull() ?: ""
+                    },
                     onSecretTap = {
                         easterEggCount++
                         val left = 7 - easterEggCount

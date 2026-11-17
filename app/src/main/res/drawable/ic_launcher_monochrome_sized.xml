@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shrinks the icon picture so it is the same size as the other Numio icons and fits every icon shape. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_monochrome"
+    android:inset="13%" />

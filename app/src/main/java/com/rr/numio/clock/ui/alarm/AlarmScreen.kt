@@ -520,14 +520,13 @@ fun AlarmCard(
                 onClick = onVibrate
             )
             if (isActive && alarm.repeats) {
-                val day = if (skipping) skipDay(alarm.skipAt)
-                          else skipDay(AlarmTimes.next(alarm, now, honourSkip = false))
+                val day = dayWord(if (skipping) alarm.skipAt else AlarmTimes.next(alarm, now, honourSkip = false), now)
                 FooterItem(
                     icon = R.drawable.ic_skip,
-                    text = if (skipping) "$day skipped · Undo" else "Skip $day",
+                    text = if (skipping) "${day.replaceFirstChar { it.uppercase() }} skipped · Undo" else "Skip $day",
                     on = skipping,
-                    description = if (skipping) "$day's ring is skipped. Tap to undo"
-                                  else "Skip only $day's ring",
+                    description = if (skipping) "The ring $day is skipped. Tap to undo"
+                                  else "Skip only the ring $day",
                     onClick = { onSkip(skipping) }
                 )
             }
@@ -571,9 +570,20 @@ private fun FooterItem(
     }
 }
 
-/** "Thu" for the skipped ring's day. */
-private fun skipDay(millis: Long): String =
-    SimpleDateFormat("EEE", Locale.getDefault()).format(java.util.Date(millis))
+/**
+ * The day of a ring in friendly words: "today", "tomorrow", or the short
+ * day name ("Mon") when it's further away, so the label is never wrong.
+ */
+private fun dayWord(millis: Long, now: Long): String {
+    val ring = Calendar.getInstance().apply { timeInMillis = millis }
+    val day = Calendar.getInstance().apply { timeInMillis = now }
+    fun sameDay() = ring.get(Calendar.YEAR) == day.get(Calendar.YEAR) &&
+        ring.get(Calendar.DAY_OF_YEAR) == day.get(Calendar.DAY_OF_YEAR)
+    if (sameDay()) return "today"
+    day.add(Calendar.DAY_OF_YEAR, 1)
+    if (sameDay()) return "tomorrow"
+    return SimpleDateFormat("EEE", Locale.getDefault()).format(java.util.Date(millis))
+}
 
 /** A music file's name without its extension, for the alarm card. */
 private fun musicName(context: Context, uri: Uri): String {

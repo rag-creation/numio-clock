@@ -65,14 +65,18 @@ fun NightSky(modifier: Modifier = Modifier) {
         val h = size.height
         val dp = density
 
-        // a soft glow along the band, then its dots
-        drawLine(
-            Brush.linearGradient(
-                listOf(Color.Transparent, Haze.copy(alpha = 0.07f), Cream.copy(alpha = 0.05f), Haze.copy(alpha = 0.07f), Color.Transparent),
-                start = Offset(0f, 0.66f * h), end = Offset(w, 0.06f * h)
-            ),
-            Offset(0f, 0.66f * h), Offset(w, 0.06f * h), strokeWidth = 0.16f * h, cap = StrokeCap.Round
+        // a soft haze along the band: many faint strokes, widest first, so its
+        // edges fade out instead of ending in a hard line; dimmer towards its ends
+        val along = Brush.linearGradient(
+            listOf(Color.Transparent, Haze, Cream, Haze, Color.Transparent),
+            start = Offset(0f, 0.66f * h), end = Offset(w, 0.06f * h)
         )
+        for (k in 1..8) {
+            drawLine(
+                along, Offset(0f, 0.66f * h), Offset(w, 0.06f * h),
+                strokeWidth = 0.2f * h * k / 8f, cap = StrokeCap.Round, alpha = 0.012f
+            )
+        }
         band.forEachIndexed { i, s ->
             drawCircle(if (i % 3 == 0) Haze else Cream, s.r * dp, Offset(s.x * w, s.y * h), alpha = s.a)
         }

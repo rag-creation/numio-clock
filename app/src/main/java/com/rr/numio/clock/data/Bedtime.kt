@@ -52,6 +52,9 @@ object Bedtime {
 
     private const val CHANNEL_ID = "numio_bedtime"
     private const val ACTION = "com.rr.numio.clock.BEDTIME"
+    const val ACTION_LATER = "com.rr.numio.clock.BEDTIME_LATER"
+    const val ACTION_SKIP = "com.rr.numio.clock.BEDTIME_SKIP"
+    private const val AMBER = 0xFFFFC21A.toInt()
     private const val NOTIFICATION_ID = 7700
 
     // ---------- settings ----------
@@ -165,17 +168,73 @@ object Bedtime {
             context, NOTIFICATION_ID, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val left = ((plan.ring - now) / 60_000L).toInt()
+        val ringTime = time.format(Date(plan.ring))
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_moon)
+            .setColor(AMBER)
             .setContentTitle(title)
             .setContentText(text)
+            .setSubText("${left / 60}h ${left % 60}m until your alarm")
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .addAction(0, "Remind me in 15 min", actionIntent(context, ACTION_LATER, 1))
+            .addAction(0, "Skip $ringTime alarm", actionIntent(context, ACTION_SKIP, 2))
             .build()
         try {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) { }
+    }
+
+    private fun actionIntent(context: Context, action: String, code: Int): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, NOTIFICATION_ID + code,
+            Intent(context, BedtimeReceiver::class.java).setAction(action),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+    /** "Remind me in 15 min": the same reminder again a quarter of an hour later. */
+    fun later(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        val at = System.currentTimeMillis() + 15 * 60_000L
+        val pending = PendingIntent.getBroadcast(
+            context, NOTIFICATION_ID + 3,
+            Intent(context, BedtimeReceiver::class.java).setAction(ACTION),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+        if (exact) alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+        else alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+    }
+
+    /**
+     * "Skip 7:12 AM alarm": skips that one ring of every alarm due then
+     * (a one-time alarm is switched off), and says so for a few seconds.
+     */
+    suspend fun skipComingAlarm(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        val settings = settings(context).first()
+        val repository = AlarmRepository(context)
+        val now = System.currentTimeMillis()
+        val plan = tonight(repository.alarms.first(), settings, now) ?: return
+        repository.alarms.first()
+            .filter { it.isEnabled && AlarmTimes.next(it, now) == plan.ring }
+            .forEach { if (it.repeats) repository.skipNext(it.id) else repository.toggleAlarm(it.id) }
+
+        val ringTime = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(plan.ring))
+        val done = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_moon)
+            .setColor(AMBER)
+            .setContentTitle("Alarm skipped")
+            .setContentText("The $ringTime alarm won't ring. Sleep well.")
+            .setTimeoutAfter(10_000L)
+            .setAutoCancel(true)
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, done)
         } catch (e: SecurityException) { }
     }
 
@@ -192,8 +251,14 @@ class BedtimeReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                Bedtime.remind(context)
-                Bedtime.update(context)
+                when (intent.action) {
+                    Bedtime.ACTION_LATER -> Bedtime.later(context)
+                    Bedtime.ACTION_SKIP -> Bedtime.skipComingAlarm(context)
+                    else -> {
+                        Bedtime.remind(context)
+                        Bedtime.update(context)
+                    }
+                }
             } finally {
                 pending.finish()
             }

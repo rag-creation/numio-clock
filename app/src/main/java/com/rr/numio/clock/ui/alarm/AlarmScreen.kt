@@ -110,6 +110,37 @@ fun AlarmScreen() {
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
 
+            // Bedtime: "Sleep by 10:00 PM for 8 h", when it's on and a morning alarm is within a day
+            val bedtime by com.rr.numio.clock.data.Bedtime.settings(context)
+                .collectAsState(initial = com.rr.numio.clock.data.BedtimeSettings())
+            if (bedtime.enabled) {
+                val now = System.currentTimeMillis()
+                com.rr.numio.clock.data.Bedtime.tonight(alarms, bedtime, now)?.let { plan ->
+                    val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT)
+                    val hours = com.rr.numio.clock.data.Bedtime.hoursText(bedtime.goalMinutes)
+                    val line = if (now >= plan.bedtime) {
+                        val left = ((plan.ring - now) / 60_000L).toInt()
+                        "Sleep now · ${left / 60}h ${left % 60}m until your ${time.format(java.util.Date(plan.ring))} alarm"
+                    } else {
+                        "Sleep by ${time.format(java.util.Date(plan.bedtime))} for $hours"
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_moon),
+                            contentDescription = null,
+                            tint = NumioTextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(line, fontSize = 12.sp, color = NumioTextSecondary)
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(

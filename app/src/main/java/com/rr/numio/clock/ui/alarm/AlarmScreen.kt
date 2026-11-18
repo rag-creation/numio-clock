@@ -127,7 +127,13 @@ fun AlarmScreen() {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 24.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(onClickLabel = "Open bedtime") {
+                                context.startActivity(Intent(context, com.rr.numio.clock.BedtimeActivity::class.java))
+                            }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_moon),

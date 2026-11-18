@@ -30,6 +30,13 @@
         </activity>
 
         <activity
+            android:name=".BedtimeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""/>
+
+        <activity
             android:name=".AlarmActivity"
             android:exported="false"
             android:showWhenLocked="true"

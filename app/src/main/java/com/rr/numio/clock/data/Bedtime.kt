@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import com.rr.numio.clock.MainActivity
 import com.rr.numio.clock.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -165,7 +164,8 @@ object Bedtime {
                 "Sleep by ${time.format(Date(plan.bedtime))} for $hours before your ${time.format(Date(plan.ring))} alarm."
         }
         val open = PendingIntent.getActivity(
-            context, NOTIFICATION_ID, Intent(context, MainActivity::class.java),
+            context, NOTIFICATION_ID,
+            Intent(context, com.rr.numio.clock.BedtimeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val left = ((plan.ring - now) / 60_000L).toInt()

@@ -25,7 +25,7 @@ jobs:
       - name: Build test APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug 2>&1 | tee build.log
           exit ${PIPESTATUS[0]}
 
       - name: Report errors

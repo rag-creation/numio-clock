@@ -6,17 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.rr.numio.clock.MainActivity
-import java.util.Calendar
 
 object AlarmScheduler {
 
     private const val TAG = "NumioAlarm"
     private const val ACTION_TRIGGER = "com.rr.numio.clock.ALARM_TRIGGER"
 
-    private val DAYS = listOf(
-        Calendar.SUNDAY, Calendar.MONDAY, Calendar.TUESDAY,
-        Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY
-    )
+    private val DAYS = AlarmTimes.DAYS
 
     fun schedule(context: Context, alarm: AlarmModel) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -49,17 +45,8 @@ object AlarmScheduler {
         alarm: AlarmModel,
         dayOfWeek: Int
     ) {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, alarm.hour)
-            set(Calendar.MINUTE, alarm.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (dayOfWeek != -1) set(Calendar.DAY_OF_WEEK, dayOfWeek)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                if (dayOfWeek != -1) add(Calendar.WEEK_OF_YEAR, 1)
-                else add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
+        // Next ring for this weekday; a skipped ring moves to the same day next week
+        val triggerAt = AlarmTimes.ringFor(alarm, dayOfWeek, System.currentTimeMillis())
 
         val requestCode = if (dayOfWeek == -1) alarm.id else alarm.id * 10 + dayOfWeek
         val pendingIntent = triggerIntent(
@@ -67,8 +54,8 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )!!
 
-        setAlarmClock(context, alarmManager, calendar.timeInMillis, pendingIntent)
-        Log.d(TAG, "✅ Alarm set for: ${calendar.time}")
+        setAlarmClock(context, alarmManager, triggerAt, pendingIntent)
+        Log.d(TAG, "✅ Alarm set for: ${java.util.Date(triggerAt)}")
     }
 
     fun snooze(context: Context, alarm: AlarmModel, snoozeMinutes: Int = 10) {

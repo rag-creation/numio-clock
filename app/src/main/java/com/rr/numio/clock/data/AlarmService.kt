@@ -22,6 +22,7 @@ class AlarmService : Service() {
 
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var rampJob: Job? = null
+    private var vibrator: android.os.Vibrator? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val alarmId    = intent?.getIntExtra("alarm_id", 0) ?: 0
@@ -30,31 +31,27 @@ class AlarmService : Service() {
         val alarmMin   = intent?.getIntExtra("alarm_minute", 0) ?: 0
         val alarmStyle  = intent?.getStringExtra("alarm_style") ?: "hold"
         val snoozeMins  = intent?.getIntExtra("snooze_minutes", 10) ?: 10
+        val chosenSound = intent?.getStringExtra("alarm_sound") ?: ""
+        val vibrate     = intent?.getBooleanExtra("alarm_vibrate", true) ?: true
 
-        val channelId = "numio_alarm_v2"
+        // The notification itself is silent: the alarm's own sound and vibration
+        // are played below, so each alarm can have its own (v2 always beeped and buzzed)
+        val channelId = "numio_alarm_v3"
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
-        val alarmSound = android.media.RingtoneManager.getDefaultUri(
-            android.media.RingtoneManager.TYPE_ALARM
-        )
+        manager.deleteNotificationChannel("numio_alarm_v2")
 
         val channel = NotificationChannel(
             channelId,
             "Numio Alarm Service",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 500, 200, 500)
+            enableVibration(false)
+            setSound(null, null)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setSound(
-                alarmSound,
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
         }
         manager.createNotificationChannel(channel)
+
+        val alarmSound = playableSound(chosenSound)
 
         // Prevent system from silencing alarm on pickup
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -83,10 +80,15 @@ class AlarmService : Service() {
 
         // Start ringtone on STREAM_ALARM to bypass silent mode
         val ringtone = android.media.RingtoneManager.getRingtone(this, alarmSound)
+            ?: android.media.RingtoneManager.getRingtone(this, defaultSound())
         ringtone?.streamType = AudioManager.STREAM_ALARM
         ringtone?.isLooping = true
         AlarmReceiver.setRingtone(ringtone)
         ringtone?.play()
+
+        // Keep vibrating while it rings, if this alarm wants it
+        vibrator?.cancel()
+        vibrator = if (vibrate) startVibrating() else null
 
         // Gradually ramp up volume over 30 seconds
         rampJob?.cancel()
@@ -142,6 +144,45 @@ class AlarmService : Service() {
         return START_NOT_STICKY
     }
 
+    /** The phone's alarm sound, or its ringtone if no alarm sound is set. */
+    private fun defaultSound(): android.net.Uri =
+        android.media.RingtoneManager.getActualDefaultRingtoneUri(this, android.media.RingtoneManager.TYPE_ALARM)
+            ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+            ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+
+    /**
+     * The alarm's chosen sound if it can still be opened, else the default.
+     * A deleted music file or a lost permission must never mean a silent alarm.
+     */
+    private fun playableSound(chosen: String): android.net.Uri {
+        if (chosen.isBlank()) return defaultSound()
+        return try {
+            val uri = android.net.Uri.parse(chosen)
+            contentResolver.openAssetFileDescriptor(uri, "r")?.use { uri } ?: defaultSound()
+        } catch (e: Exception) {
+            android.util.Log.w("NumioAlarm", "Chosen sound can't be played, using default", e)
+            defaultSound()
+        }
+    }
+
+    private fun startVibrating(): android.os.Vibrator? {
+        val v = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+        }
+        if (v == null || !v.hasVibrator()) return null
+        // buzz 0.8 s, rest 0.6 s, repeat from the start until the alarm stops
+        val effect = android.os.VibrationEffect.createWaveform(longArrayOf(0, 800, 600), 0)
+        val attrs = android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+            .build()
+        @Suppress("DEPRECATION")
+        v.vibrate(effect, attrs)
+        return v
+    }
+
     private fun actionIntent(
         action: String, alarmId: Int, hour: Int, minute: Int, label: String, snoozeMins: Int
     ): PendingIntent {
@@ -163,6 +204,8 @@ class AlarmService : Service() {
     override fun onDestroy() {
         rampJob?.cancel()
         rampJob = null
+        vibrator?.cancel()
+        vibrator = null
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         savedAlarmVolume?.let { vol ->

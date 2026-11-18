@@ -1,6 +1,20 @@
 package com.rr.numio.clock.ui.alarm
 
 import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.painterResource
+import androidx.core.content.IntentCompat
+import com.rr.numio.clock.R
+import com.rr.numio.clock.data.AlarmTimes
+import java.text.SimpleDateFormat
+import java.util.Locale
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +61,32 @@ fun AlarmScreen() {
     val alarms by repository.alarms.collectAsState(initial = emptyList())
 
     var showPicker by remember { mutableStateOf(false) }
+
+    // Choosing a sound: which alarm, and the two pickers (phone's alarm tones, a music file)
+    var soundAlarmId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var showSoundDialog by rememberSaveable { mutableStateOf(false) }
+    fun saveSound(sound: String, name: String) {
+        val alarm = alarms.find { it.id == soundAlarmId } ?: return
+        scope.launch { repository.addAlarm(alarm.copy(sound = sound, soundName = name)) }
+    }
+    val tonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val data = result.data ?: return@rememberLauncherForActivityResult
+        val uri = IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        if (uri == null || RingtoneManager.isDefault(uri)) {
+            saveSound("", "")
+        } else {
+            val name = try { RingtoneManager.getRingtone(context, uri)?.getTitle(context) } catch (e: Exception) { null }
+            saveSound(uri.toString(), name ?: "Alarm tone")
+        }
+    }
+    val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        // Keep the right to read this file after a restart, or the alarm couldn't play it
+        try {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (e: SecurityException) { }
+        saveSound(uri.toString(), musicName(context, uri))
+    }
     var editingAlarm by remember { mutableStateOf<AlarmModel?>(null) }
 
     // Delete flow: long-press → confirm → delete → undo bar
@@ -108,6 +148,18 @@ fun AlarmScreen() {
                         },
                         onDayToggle = { updatedAlarm ->
                             scope.launch { repository.addAlarm(updatedAlarm) }
+                        },
+                        onSound = {
+                            soundAlarmId = alarm.id
+                            showSoundDialog = true
+                        },
+                        onVibrate = {
+                            scope.launch { repository.addAlarm(alarm.copy(vibrate = !alarm.vibrate)) }
+                        },
+                        onSkip = { skipping ->
+                            scope.launch {
+                                if (skipping) repository.cancelSkip(alarm.id) else repository.skipNext(alarm.id)
+                            }
                         }
                     )
                 }
@@ -221,6 +273,41 @@ fun AlarmScreen() {
         )
     }
 
+    // Alarm sound
+    if (showSoundDialog) {
+        val alarm = alarms.find { it.id == soundAlarmId }
+        if (alarm == null) {
+            showSoundDialog = false
+        } else {
+            SoundDialog(
+                alarm = alarm,
+                onDismiss = { showSoundDialog = false },
+                onDefault = {
+                    showSoundDialog = false
+                    saveSound("", "")
+                },
+                onTones = {
+                    showSoundDialog = false
+                    tonePicker.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                        putExtra(
+                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                            if (alarm.sound.isBlank()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                            else Uri.parse(alarm.sound)
+                        )
+                    })
+                },
+                onMusic = {
+                    showSoundDialog = false
+                    musicPicker.launch(arrayOf("audio/*"))
+                }
+            )
+        }
+    }
+
     // Numio time picker dialog
     if (showPicker) {
         val calendar = Calendar.getInstance()
@@ -231,7 +318,8 @@ fun AlarmScreen() {
             onConfirm = { hour, minute ->
                 scope.launch {
                     if (alarmToEdit != null) {
-                        repository.addAlarm(alarmToEdit.copy(hour = hour, minute = minute))
+                        // A new time means a new next ring, so any skip is dropped
+                        repository.addAlarm(alarmToEdit.copy(hour = hour, minute = minute, skipAt = 0L))
                     } else {
                         val newAlarm = AlarmModel(
                             id = System.currentTimeMillis().toInt(),
@@ -327,7 +415,10 @@ fun AlarmCard(
     onToggle: (Int) -> Unit,
     onLongPress: (AlarmModel) -> Unit,
     onEdit: (AlarmModel) -> Unit,
-    onDayToggle: (AlarmModel) -> Unit
+    onDayToggle: (AlarmModel) -> Unit,
+    onSound: () -> Unit = {},
+    onVibrate: () -> Unit = {},
+    onSkip: (skipping: Boolean) -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     val isActive = alarm.isEnabled
@@ -382,7 +473,7 @@ fun AlarmCard(
                 if (isActive) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = getTimeUntilAlarm(alarm.hour, alarm.minute, alarm.days),
+                        text = getTimeUntilAlarm(alarm),
                         fontSize = 11.sp,
                         color = AppColor.accent.value.copy(alpha = 0.6f),
                         letterSpacing = 0.5.sp
@@ -406,7 +497,7 @@ fun AlarmCard(
                         .clickable {
                             val newDays = alarm.days.toMutableList()
                             newDays[index] = !newDays[index]
-                            onDayToggle(alarm.copy(days = newDays))
+                            onDayToggle(alarm.copy(days = newDays, skipAt = 0L))
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -418,6 +509,148 @@ fun AlarmCard(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Sound · Vibrate · Skip next
+        val skipping = AlarmTimes.isSkipping(alarm, System.currentTimeMillis())
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            OptionChip(
+                icon = R.drawable.ic_bell,
+                text = alarm.soundName.ifBlank { "Default" },
+                on = alarm.sound.isNotBlank(),
+                description = "Alarm sound: ${alarm.soundName.ifBlank { "phone's alarm sound" }}",
+                onClick = onSound,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            OptionChip(
+                icon = R.drawable.ic_vibrate,
+                text = if (alarm.vibrate) "Vibrate" else "No vibrate",
+                on = alarm.vibrate,
+                description = if (alarm.vibrate) "Vibrate is on" else "Vibrate is off",
+                onClick = onVibrate
+            )
+            if (isActive && alarm.repeats) {
+                OptionChip(
+                    icon = R.drawable.ic_skip,
+                    text = if (skipping) "Skipped ${skipDay(alarm.skipAt)} · Undo" else "Skip next",
+                    on = skipping,
+                    description = if (skipping) "Next ring skipped. Tap to undo" else "Skip the next ring only",
+                    onClick = { onSkip(skipping) }
+                )
+            }
+        }
+    }
+}
+
+/** Small rounded button on the alarm card: icon + word, amber when on. */
+@Composable
+private fun OptionChip(
+    icon: Int,
+    text: String,
+    on: Boolean,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colour = if (on) AppColor.accent.value else NumioTextMuted
+    Row(
+        modifier = modifier
+            .heightIn(min = 36.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (on) Color(0x20F5C427) else Color(0xFF1F1F1F))
+            .clickable(onClickLabel = description, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(id = icon),
+            contentDescription = null,
+            tint = colour,
+            modifier = Modifier.size(15.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = colour,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** "Thu" for the skipped ring's day. */
+private fun skipDay(millis: Long): String =
+    SimpleDateFormat("EEE", Locale.getDefault()).format(java.util.Date(millis))
+
+/** A music file's name without its extension, for the alarm card. */
+private fun musicName(context: Context, uri: Uri): String {
+    val name = try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    } catch (e: Exception) { null }
+    return name?.substringBeforeLast('.')?.ifBlank { null } ?: "Music"
+}
+
+@Composable
+private fun SoundDialog(
+    alarm: AlarmModel,
+    onDismiss: () -> Unit,
+    onDefault: () -> Unit,
+    onTones: () -> Unit,
+    onMusic: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF161616))
+                .padding(24.dp)
+        ) {
+            Text("Alarm sound", fontSize = 20.sp, fontWeight = FontWeight.W400, color = NumioTextPrimary)
+            Spacer(modifier = Modifier.height(16.dp))
+            SoundRow("Phone's alarm sound", "What the phone uses for alarms", alarm.sound.isBlank(), onDefault)
+            SoundRow("Alarm tones", "Pick from the phone's tones", false, onTones)
+            SoundRow("Music on this phone", "Any song or audio file", false, onMusic)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "If the chosen sound is ever deleted, the alarm rings with the phone's alarm sound instead.",
+                fontSize = 12.sp,
+                color = NumioTextMuted,
+                lineHeight = 17.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SoundRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, color = if (selected) AppColor.accent.value else NumioTextPrimary)
+            Text(subtitle, fontSize = 12.sp, color = NumioTextMuted)
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(AppColor.accent.value)
+            )
         }
     }
 }
@@ -444,33 +677,13 @@ fun NumioToggle(isOn: Boolean, onToggle: () -> Unit) {
 }
 
 /**
- * Time until the next ring, respecting the selected days.
- * days[0] = Sunday … days[6] = Saturday (same order as the S M T W T F S row).
- * No days selected = one-time alarm (today, or tomorrow if the time has passed).
+ * Time until the next ring, respecting the selected days and a skipped ring.
+ * Uses the same maths that books the alarm (AlarmTimes).
  */
-fun getTimeUntilAlarm(hour: Int, minute: Int, days: List<Boolean> = emptyList()): String {
-    val now = Calendar.getInstance()
-    val anyDay = days.any { it }
-
-    var next: Calendar? = null
-    for (offset in 0..7) {
-        val candidate = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, offset)
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        if (candidate.timeInMillis <= now.timeInMillis) continue
-        val dayIndex = candidate.get(Calendar.DAY_OF_WEEK) - 1 // Sunday = 0
-        if (!anyDay || days.getOrElse(dayIndex) { false }) {
-            next = candidate
-            break
-        }
-    }
-    if (next == null) return ""
-
-    val diffMins = ((next.timeInMillis - now.timeInMillis) / 60000).toInt()
+fun getTimeUntilAlarm(alarm: AlarmModel): String {
+    val now = System.currentTimeMillis()
+    val next = AlarmTimes.next(alarm, now)
+    val diffMins = ((next - now) / 60000).toInt()
     val d = diffMins / (60 * 24)
     val hrs = (diffMins / 60) % 24
     val mins = diffMins % 60

@@ -6,7 +6,11 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
+import com.rr.numio.clock.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -32,11 +36,23 @@ fun WidgetsScreen(onBack: () -> Unit) {
     ) {
         item {
             Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(onClick = onBack).padding(vertical = 6.dp)
-            ) {
-                Text("←", fontSize = 22.sp, color = NumioTextPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Round back button: a proper arrow icon, 44dp to tap, lined up with the title
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(NumioBgSurface)
+                        .clickable(onClickLabel = "Back", onClick = onBack)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_back),
+                        contentDescription = "Back",
+                        tint = NumioTextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.width(14.dp))
                 Text("Widgets", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = NumioTextPrimary)
             }

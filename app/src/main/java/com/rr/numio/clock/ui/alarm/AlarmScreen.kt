@@ -10,7 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.painterResource
-import androidx.core.content.IntentCompat
+import android.content.ContentUris
+import android.media.AudioAttributes
+import android.provider.MediaStore
 import com.rr.numio.clock.R
 import com.rr.numio.clock.data.AlarmTimes
 import java.text.SimpleDateFormat
@@ -68,16 +70,6 @@ fun AlarmScreen() {
     fun saveSound(sound: String, name: String) {
         val alarm = alarms.find { it.id == soundAlarmId } ?: return
         scope.launch { repository.addAlarm(alarm.copy(sound = sound, soundName = name)) }
-    }
-    val tonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val data = result.data ?: return@rememberLauncherForActivityResult
-        val uri = IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
-        if (uri == null || RingtoneManager.isDefault(uri)) {
-            saveSound("", "")
-        } else {
-            val name = try { RingtoneManager.getRingtone(context, uri)?.getTitle(context) } catch (e: Exception) { null }
-            saveSound(uri.toString(), name ?: "Alarm tone")
-        }
     }
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -279,26 +271,12 @@ fun AlarmScreen() {
         if (alarm == null) {
             showSoundDialog = false
         } else {
-            SoundDialog(
+            ToneDialog(
                 alarm = alarm,
                 onDismiss = { showSoundDialog = false },
-                onDefault = {
+                onChoose = { sound, name ->
                     showSoundDialog = false
-                    saveSound("", "")
-                },
-                onTones = {
-                    showSoundDialog = false
-                    tonePicker.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                        putExtra(
-                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                            if (alarm.sound.isBlank()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                            else Uri.parse(alarm.sound)
-                        )
-                    })
+                    saveSound(sound, name)
                 },
                 onMusic = {
                     showSoundDialog = false
@@ -511,35 +489,45 @@ fun AlarmCard(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Sound · Vibrate · Skip next
-        val skipping = AlarmTimes.isSkipping(alarm, System.currentTimeMillis())
+        // Footer: Sound · Vibrate · Skip <day>, under a thin line
+        val now = System.currentTimeMillis()
+        val skipping = AlarmTimes.isSkipping(alarm, now)
+        Spacer(modifier = Modifier.height(14.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFF2A2620))
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            OptionChip(
+            FooterItem(
                 icon = R.drawable.ic_bell,
-                text = alarm.soundName.ifBlank { "Default" },
-                on = alarm.sound.isNotBlank(),
-                description = "Alarm sound: ${alarm.soundName.ifBlank { "phone's alarm sound" }}",
+                text = alarm.soundName.ifBlank { "Alarm sound" },
+                on = isActive,
+                description = "Alarm sound: ${alarm.soundName.ifBlank { "phone's alarm sound" }}. Tap to change",
                 onClick = onSound,
                 modifier = Modifier.weight(1f, fill = false)
             )
-            OptionChip(
+            FooterItem(
                 icon = R.drawable.ic_vibrate,
                 text = if (alarm.vibrate) "Vibrate" else "No vibrate",
-                on = alarm.vibrate,
-                description = if (alarm.vibrate) "Vibrate is on" else "Vibrate is off",
+                on = isActive && alarm.vibrate,
+                description = if (alarm.vibrate) "Vibrate on. Tap to turn off" else "Vibrate off. Tap to turn on",
                 onClick = onVibrate
             )
             if (isActive && alarm.repeats) {
-                OptionChip(
+                val day = if (skipping) skipDay(alarm.skipAt)
+                          else skipDay(AlarmTimes.next(alarm, now, honourSkip = false))
+                FooterItem(
                     icon = R.drawable.ic_skip,
-                    text = if (skipping) "Skipped ${skipDay(alarm.skipAt)} · Undo" else "Skip next",
+                    text = if (skipping) "$day skipped · Undo" else "Skip $day",
                     on = skipping,
-                    description = if (skipping) "Next ring skipped. Tap to undo" else "Skip the next ring only",
+                    description = if (skipping) "$day's ring is skipped. Tap to undo"
+                                  else "Skip only $day's ring",
                     onClick = { onSkip(skipping) }
                 )
             }
@@ -547,9 +535,9 @@ fun AlarmCard(
     }
 }
 
-/** Small rounded button on the alarm card: icon + word, amber when on. */
+/** Plain icon + word in the card footer: amber when on, grey when off. 44dp tall to tap. */
 @Composable
-private fun OptionChip(
+private fun FooterItem(
     icon: Int,
     text: String,
     on: Boolean,
@@ -560,23 +548,22 @@ private fun OptionChip(
     val colour = if (on) AppColor.accent.value else NumioTextMuted
     Row(
         modifier = modifier
-            .heightIn(min = 36.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (on) Color(0x20F5C427) else Color(0xFF1F1F1F))
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClickLabel = description, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = painterResource(id = icon),
             contentDescription = null,
             tint = colour,
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = text,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             color = colour,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -598,59 +585,172 @@ private fun musicName(context: Context, uri: Uri): String {
     return name?.substringBeforeLast('.')?.ifBlank { null } ?: "Music"
 }
 
+/** One tone in the list: its uri ("" = the phone's alarm sound) and name. */
+private data class Tone(val uri: String, val name: String)
+
+/**
+ * The phone's built-in alarm tones, read straight from its media list.
+ * Our own list instead of the system tone picker, which some phones (and
+ * debloated ones) don't have — opening it there crashed Clock.
+ */
+private fun alarmTones(context: Context): List<Tone> = try {
+    context.contentResolver.query(
+        MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
+        arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE),
+        "${MediaStore.Audio.Media.IS_ALARM} != 0",
+        null,
+        "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE"
+    )?.use { c ->
+        buildList {
+            while (c.moveToNext()) {
+                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.INTERNAL_CONTENT_URI, c.getLong(0))
+                add(Tone(uri.toString(), c.getString(1) ?: "Alarm tone"))
+            }
+        }.distinctBy { it.name }
+    } ?: emptyList()
+} catch (e: Exception) {
+    emptyList()
+}
+
 @Composable
-private fun SoundDialog(
+private fun ToneDialog(
     alarm: AlarmModel,
     onDismiss: () -> Unit,
-    onDefault: () -> Unit,
-    onTones: () -> Unit,
+    onChoose: (sound: String, name: String) -> Unit,
     onMusic: () -> Unit
 ) {
+    val context = LocalContext.current
+    val tones = remember { alarmTones(context) }
+    var selected by remember { mutableStateOf(alarm.sound) }
+    var selectedName by remember { mutableStateOf(alarm.soundName) }
+
+    // Preview: plays on the alarm volume, stops on the next tap or when the list closes
+    var preview by remember { mutableStateOf<android.media.Ringtone?>(null) }
+    fun play(uri: String) {
+        preview?.stop()
+        preview = try {
+            val u = if (uri.isBlank()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else Uri.parse(uri)
+            RingtoneManager.getRingtone(context, u)?.apply {
+                audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
+                play()
+            }
+        } catch (e: Exception) { null }
+    }
+    DisposableEffect(Unit) { onDispose { preview?.stop() } }
+
+    // A chosen song isn't in the tone list, so show it at the top
+    val rows = buildList {
+        add(Tone("", "Phone's alarm sound"))
+        if (alarm.sound.isNotBlank() && tones.none { it.uri == alarm.sound }) add(Tone(alarm.sound, alarm.soundName.ifBlank { "Music" }))
+        addAll(tones)
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color(0xFF161616))
-                .padding(24.dp)
+                .padding(vertical = 20.dp)
         ) {
-            Text("Alarm sound", fontSize = 20.sp, fontWeight = FontWeight.W400, color = NumioTextPrimary)
-            Spacer(modifier = Modifier.height(16.dp))
-            SoundRow("Phone's alarm sound", "What the phone uses for alarms", alarm.sound.isBlank(), onDefault)
-            SoundRow("Alarm tones", "Pick from the phone's tones", false, onTones)
-            SoundRow("Music on this phone", "Any song or audio file", false, onMusic)
-            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                "If the chosen sound is ever deleted, the alarm rings with the phone's alarm sound instead.",
+                "Alarm sound",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W400,
+                color = NumioTextPrimary,
+                modifier = Modifier.padding(horizontal = 22.dp)
+            )
+            Text(
+                "Tap a tone to hear it",
                 fontSize = 12.sp,
                 color = NumioTextMuted,
-                lineHeight = 17.sp
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 4.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun SoundRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, color = if (selected) AppColor.accent.value else NumioTextPrimary)
-            Text(subtitle, fontSize = 12.sp, color = NumioTextMuted)
-        }
-        if (selected) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(AppColor.accent.value)
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                items(rows, key = { it.uri.ifBlank { "default" } }) { tone ->
+                    val isSelected = tone.uri == selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) Color(0x20F5C427) else Color.Transparent)
+                            .clickable {
+                                selected = tone.uri
+                                selectedName = if (tone.uri.isBlank()) "" else tone.name
+                                play(tone.uri)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            tone.name,
+                            fontSize = 15.sp,
+                            color = if (isSelected) AppColor.accent.value else NumioTextPrimary,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(AppColor.accent.value)
+                            )
+                        }
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { preview?.stop(); onMusic() }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Music on this phone…", fontSize = 15.sp, color = NumioTextPrimary, modifier = Modifier.weight(1f))
+                        Text("›", fontSize = 22.sp, color = NumioTextMuted)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "If a chosen sound is ever deleted, the alarm rings with the phone's alarm sound.",
+                fontSize = 11.sp,
+                color = NumioTextMuted,
+                lineHeight = 15.sp,
+                modifier = Modifier.padding(horizontal = 22.dp)
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF1F1F1F))
+                        .clickable { preview?.stop(); onDismiss() }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) { Text("Cancel", fontSize = 14.sp, color = NumioTextSecondary) }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AppColor.accent.value)
+                        .clickable { preview?.stop(); onChoose(selected, selectedName) }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) { Text("Done", fontSize = 14.sp, fontWeight = FontWeight.W600, color = Color(0xFF1A1400)) }
+            }
         }
     }
 }

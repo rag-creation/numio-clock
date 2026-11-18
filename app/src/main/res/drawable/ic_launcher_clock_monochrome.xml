@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon layer (Android 13+): the same alarm clock in one colour; the launcher picks the colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FF000000" android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M47.10,39.10 H60.90 A11.5,11.5 0 0,1 72.40,50.60 V64.40 A11.5,11.5 0 0,1 60.90,75.90 H47.10 A11.5,11.5 0 0,1 35.60,64.40 V50.60 A11.5,11.5 0 0,1 47.10,39.10 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M50.60,32.50 H57.40 A1.6,1.6 0 0,1 59.00,34.10 V34.10 A1.6,1.6 0 0,1 57.40,35.70 H50.60 A1.6,1.6 0 0,1 49.00,34.10 V34.10 A1.6,1.6 0 0,1 50.60,32.50 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M29.14,42.74 A8.6,8.6 0 0,1 41.92,31.23 Z" />
+    <path android:strokeColor="#FF000000" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M38.94,40.78 L35.53,36.99" />
+    <path android:fillColor="#FF000000" android:pathData="M66.08,31.23 A8.6,8.6 0 0,1 78.86,42.74 Z" />
+    <path android:strokeColor="#FF000000" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M69.06,40.78 L72.47,36.99" />
+    <path android:strokeColor="#FF000000" android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M41.50,76.90 L38.30,81.30" />
+    <path android:strokeColor="#FF000000" android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M66.50,76.90 L69.70,81.30" />
+    <path android:fillColor="#FF000000" android:pathData="M52.75,44.60 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M59.20,46.33 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M63.92,51.05 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M65.65,57.50 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M63.92,63.95 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M59.20,68.67 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M52.75,70.40 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M46.30,68.67 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M41.58,63.95 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M39.85,57.50 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M41.58,51.05 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M46.30,46.33 a1.25,1.25 0 1,1 2.50,0 a1.25,1.25 0 1,1 -2.50,0 Z" />
+    <path android:fillColor="#FF000000" android:strokeColor="#FF000000" android:strokeWidth="0.94" android:strokeLineJoin="round" android:pathData="M47.66,52.07 Q47.66,51.08 48.48,51.63 L53.21,54.79 Q54.04,55.34 53.24,55.92 L51.48,57.22 Q50.68,57.81 50.68,58.81 L50.68,62.65 Q50.68,63.64 49.69,63.64 L48.64,63.64 Q47.66,63.64 47.66,62.65 Z" />
+    <path android:fillColor="#FF000000" android:strokeColor="#FF000000" android:strokeWidth="0.94" android:strokeLineJoin="round" android:pathData="M57.50,52.34 Q57.50,51.35 58.49,51.35 L59.37,51.35 Q60.36,51.35 60.36,52.34 L60.36,62.54 Q60.36,63.53 59.55,62.97 L54.85,59.67 Q54.04,59.11 54.85,58.55 L56.68,57.28 Q57.50,56.71 57.50,55.73 Z" />
+</vector>

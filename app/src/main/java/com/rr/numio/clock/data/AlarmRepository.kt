@@ -33,6 +33,8 @@ class AlarmRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[ALARMS_KEY] = alarmJson.encodeToString(alarms)
         }
+        // The bedtime reminder follows the alarms
+        Bedtime.update(context)
     }
 
     suspend fun addAlarm(alarm: AlarmModel) {
@@ -106,6 +108,7 @@ class AlarmRepository(private val context: Context) {
         getCurrentAlarms().filter { it.isEnabled }.forEach {
             AlarmScheduler.schedule(context, it)
         }
+        Bedtime.update(context)
     }
 
     /**

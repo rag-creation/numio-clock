@@ -29,6 +29,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     try {
                         val style = WorldCityStore.getAlarmStyle(context).firstOrNull() ?: "hold"
                         val snoozeMins = WorldCityStore.getSnoozeDuration(context).firstOrNull() ?: 10
+                        // This alarm's own sound and vibrate choice (a snooze ring carries the same id)
+                        val saved = try { AlarmRepository(context).find(alarmId) } catch (e: Exception) { null }
 
                         val serviceIntent = Intent(context, AlarmService::class.java).apply {
                             putExtra("alarm_id", alarmId)
@@ -37,6 +39,8 @@ class AlarmReceiver : BroadcastReceiver() {
                             putExtra("alarm_minute", alarmMin)
                             putExtra("alarm_style", style)
                             putExtra("snooze_minutes", snoozeMins)
+                            putExtra("alarm_sound", saved?.sound ?: "")
+                            putExtra("alarm_vibrate", saved?.vibrate ?: true)
                         }
                         context.startForegroundService(serviceIntent)
                     } finally {

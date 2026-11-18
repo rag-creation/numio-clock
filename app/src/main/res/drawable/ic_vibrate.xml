@@ -1,0 +1,13 @@
+<!-- Vibrate: a phone with buzz lines either side. Drawn for Clock by Numio, same stroke style as the other small icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M10,4 H14 A2,2 0 0,1 16,6 V18 A2,2 0 0,1 14,20 H10 A2,2 0 0,1 8,18 V6 A2,2 0 0,1 10,4 Z M4.5,9 V15 M19.5,9 V15 M2,10.5 V13.5 M22,10.5 V13.5" />
+</vector>

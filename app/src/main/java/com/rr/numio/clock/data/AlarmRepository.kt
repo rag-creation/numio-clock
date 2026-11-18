@@ -13,6 +13,9 @@ import kotlinx.serialization.json.Json
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "numio_alarms")
 
+/** Reads alarms saved by any version; a field this version doesn't know is ignored, never a reason to drop alarms. */
+internal val alarmJson = Json { ignoreUnknownKeys = true }
+
 class AlarmRepository(private val context: Context) {
 
     private val ALARMS_KEY = stringPreferencesKey("alarms")
@@ -20,7 +23,7 @@ class AlarmRepository(private val context: Context) {
     val alarms: Flow<List<AlarmModel>> = context.dataStore.data.map { prefs ->
         val json = prefs[ALARMS_KEY] ?: return@map emptyList()
         try {
-            Json.decodeFromString<List<AlarmModel>>(json)
+            alarmJson.decodeFromString<List<AlarmModel>>(json)
         } catch (e: Exception) {
             emptyList()
         }
@@ -28,7 +31,7 @@ class AlarmRepository(private val context: Context) {
 
     suspend fun saveAlarms(alarms: List<AlarmModel>) {
         context.dataStore.edit { prefs ->
-            prefs[ALARMS_KEY] = Json.encodeToString(alarms)
+            prefs[ALARMS_KEY] = alarmJson.encodeToString(alarms)
         }
     }
 
@@ -45,13 +48,46 @@ class AlarmRepository(private val context: Context) {
         val index = current.indexOfFirst { it.id == id }
         if (index != -1) {
             val alarm = current[index]
-            val updated = alarm.copy(isEnabled = !alarm.isEnabled)
+            // Switching it off or on again forgets any skipped ring
+            val updated = alarm.copy(isEnabled = !alarm.isEnabled, skipAt = 0L)
             current[index] = updated
             saveAlarms(current)
             if (updated.isEnabled) AlarmScheduler.schedule(context, updated)
             else AlarmScheduler.cancel(context, updated)
         }
     }
+
+    /**
+     * Skip only the next ring of a repeating alarm (a holiday). The alarm stays
+     * on and rings again as normal after that.
+     */
+    suspend fun skipNext(id: Int) {
+        val current = getCurrentAlarms().toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index == -1) return
+        val alarm = current[index]
+        if (!alarm.isEnabled || !alarm.repeats) return
+        val updated = alarm.copy(
+            skipAt = AlarmTimes.next(alarm, System.currentTimeMillis(), honourSkip = false)
+        )
+        current[index] = updated
+        saveAlarms(current)
+        AlarmScheduler.schedule(context, updated)
+    }
+
+    /** Undo "Skip next": the skipped ring is booked again. */
+    suspend fun cancelSkip(id: Int) {
+        val current = getCurrentAlarms().toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index == -1) return
+        val updated = current[index].copy(skipAt = 0L)
+        current[index] = updated
+        saveAlarms(current)
+        if (updated.isEnabled) AlarmScheduler.schedule(context, updated)
+    }
+
+    /** The saved alarm with this id, or null. */
+    suspend fun find(id: Int): AlarmModel? = getCurrentAlarms().find { it.id == id }
 
     suspend fun deleteAlarm(id: Int) {
         val current = getCurrentAlarms().toMutableList()
@@ -84,7 +120,12 @@ class AlarmRepository(private val context: Context) {
         val alarm = current[index]
         if (!alarm.isEnabled) return
         if (alarm.days.any { it }) {
-            AlarmScheduler.schedule(context, alarm)
+            // A skip that has passed is done with
+            if (alarm.skipAt != 0L && alarm.skipAt <= System.currentTimeMillis()) {
+                current[index] = alarm.copy(skipAt = 0L)
+                saveAlarms(current)
+            }
+            AlarmScheduler.schedule(context, current[index])
         } else {
             current[index] = alarm.copy(isEnabled = false)
             saveAlarms(current)
@@ -96,7 +137,7 @@ class AlarmRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             val json = prefs[ALARMS_KEY] ?: return@edit
             result = try {
-                Json.decodeFromString(json)
+                alarmJson.decodeFromString(json)
             } catch (e: Exception) {
                 emptyList()
             }

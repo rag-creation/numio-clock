@@ -403,6 +403,8 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(12.dp))
 
             SettingsCard {
+                OfficialWordmark(dark = true, modifier = Modifier.padding(vertical = 6.dp).height(26.dp))
+                SettingsDivider()
                 SettingsRow(
                     label = "Version",
                     // The installed version, so it never goes out of date

@@ -359,6 +359,9 @@ fun SettingsScreen() {
             Spacer(modifier = Modifier.height(10.dp))
         }
 
+        // Bedtime reminder
+        item { BedtimeSection() }
+
         // Widget
         item {
             Spacer(modifier = Modifier.height(8.dp))
